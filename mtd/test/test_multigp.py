@@ -30,7 +30,7 @@ def test_multigp():
     prior = (
         [priors.VariancePrior()] +
         [priors.LengthScalePrior()]*ndim +
-        [priors.LogPrior()]
+        [priors.NoisePrior()]
     )
 
     mgp.train(prior, 10, 10)

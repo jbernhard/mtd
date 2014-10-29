@@ -5,7 +5,7 @@ from __future__ import division
 import numpy as np
 from scipy import stats
 
-__all__ = 'FlatPrior', 'VariancePrior', 'LengthScalePrior', 'LogPrior'
+__all__ = 'FlatPrior', 'VariancePrior', 'LengthScalePrior', 'NoisePrior'
 
 
 def FlatPrior(lower=0., upper=1.):
@@ -43,9 +43,9 @@ class _log_gen(stats.rv_continuous):
         return -np.log(x)  # not normalized!
 
 
-def LogPrior(lower=1e-8):
+def NoisePrior(lower=1e-8):
     """
-    Logarithmic (Jeffreys) prior.
+    Logarithmic (Jeffreys) prior for the noise term (nugget).
 
     """
     return _log_gen(a=1e-16, name='log')(lower)

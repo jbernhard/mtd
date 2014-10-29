@@ -37,13 +37,13 @@ def test_priors():
         'LengthScalePrior:  log PDF must be -inf outside [0, 1].'
 
     # This one is implemented in mtd so it's tested a bit more rigorously.
-    log = priors.LogPrior()
-    sample = log.rvs(5)
+    noise = priors.NoisePrior()
+    sample = noise.rvs(5)
     assert np.all((sample >= 0) & (sample <= 1)), \
-        'LogPrior:  must produce values in [0, 1].'
-    assert np.all(log.logpdf(sample) == -np.log(sample)), \
-        'LogPrior:  log PDF must be -log(x).'
-    assert np.all(log.pdf(sample) == 1./sample), \
-        'LogPrior:  log PDF must be 1/x.'
-    assert np.all(np.isinf(log.logpdf((-.5, 0.)))), \
-        'LogPrior:  log PDF must be -inf for x <= 0.'
+        'NoisePrior:  must produce values in [0, 1].'
+    assert np.all(noise.logpdf(sample) == -np.log(sample)), \
+        'NoisePrior:  log PDF must be -log(x).'
+    assert np.all(noise.pdf(sample) == 1./sample), \
+        'NoisePrior:  log PDF must be 1/x.'
+    assert np.all(np.isinf(noise.logpdf((-.5, 0.)))), \
+        'NoisePrior:  log PDF must be -inf for x <= 0.'
