@@ -18,7 +18,7 @@ def _train_gp(args):
     gp, y, prior, nwalkers = args
 
     def log_posterior(pars):
-        log_prior = sum(i.logpdf(j) for (i, j) in zip(prior, pars))
+        log_prior = prior.logpdf(pars)
         if not np.isfinite(log_prior):
             return -np.inf
         gp.kernel.pars = pars
@@ -75,8 +75,8 @@ class MultiGP(object):
         """
         Train the GPs, i.e. estimate the optimal hyperparameters via MCMC.
 
-        prior: list of frozen scipy.stats.rv_continuous objects
-            One for each hyperparameter.
+        prior: Prior object
+            Priors for the kernel hyperparameters.
         nwalkers: number of MCMC walkers
         nsteps: number of MCMC steps per walker
             Both the burn-in and production chains will have nsteps.

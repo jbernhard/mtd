@@ -5,7 +5,43 @@ from __future__ import division
 import numpy as np
 from scipy import stats
 
-__all__ = 'FlatPrior', 'VariancePrior', 'LengthScalePrior', 'NoisePrior'
+__all__ = ('Prior', 'FlatPrior', 'VariancePrior', 'LengthScalePrior',
+           'NoisePrior')
+
+
+class Prior(list):
+    """
+    Prior distribution(s).  Subclass of builtins.list; addition and
+    multiplication work exactly like a list.
+
+    distributions: iterable of frozen scipy.stats distribution objects
+
+    """
+    def __add__(self, other):
+        return Prior(super(Prior, self).__add__(other))
+
+    def __mul__(self, other):
+        return Prior(super(Prior, self).__mul__(other))
+
+    def rvs(self, size=1):
+        """
+        Random sample.
+
+        """
+        return np.squeeze(np.column_stack([dist.rvs(size) for dist in self]))
+
+    def logpdf(self, x):
+        """
+        Log PDF.
+
+        """
+        x = np.asarray(x)
+
+        if len(self) == 1:
+            return self[0].logpdf(x)
+        else:
+            x = np.squeeze(x.T)
+            return sum(dist.logpdf(i) for dist, i in zip(self, x))
 
 
 def FlatPrior(lower=0., upper=1.):
@@ -13,7 +49,7 @@ def FlatPrior(lower=0., upper=1.):
     Constant prior over a finite range.
 
     """
-    return stats.uniform(loc=lower, scale=upper-lower)
+    return Prior([stats.uniform(loc=lower, scale=upper-lower)])
 
 
 def VariancePrior(a=5., b=5.):
@@ -21,7 +57,7 @@ def VariancePrior(a=5., b=5.):
     Inverse gamma prior for GP variance.
 
     """
-    return stats.invgamma(a, scale=b)
+    return Prior([stats.invgamma(a, scale=b)])
 
 
 def LengthScalePrior(a=1., b=0.1):
@@ -29,7 +65,7 @@ def LengthScalePrior(a=1., b=0.1):
     Beta prior for GP length scales (correlation lengths).
 
     """
-    return stats.beta(a, b)
+    return Prior([stats.beta(a, b)])
 
 
 class _log_gen(stats.rv_continuous):
@@ -48,4 +84,4 @@ def NoisePrior(lower=1e-8):
     Logarithmic (Jeffreys) prior for the noise term (nugget).
 
     """
-    return _log_gen(a=1e-16, name='log')(lower)
+    return Prior([_log_gen(a=1e-16, name='log')(lower)])

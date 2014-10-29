@@ -43,7 +43,24 @@ def test_priors():
         'NoisePrior:  must produce values in [0, 1].'
     assert np.all(noise.logpdf(sample) == -np.log(sample)), \
         'NoisePrior:  log PDF must be -log(x).'
-    assert np.all(noise.pdf(sample) == 1./sample), \
+    assert np.all(noise[0].pdf(sample) == 1./sample), \
         'NoisePrior:  log PDF must be 1/x.'
     assert np.all(np.isinf(noise.logpdf((-.5, 0.)))), \
         'NoisePrior:  log PDF must be -inf for x <= 0.'
+
+    # Test combining priors.
+    prior = var + 2*length + noise
+    assert len(prior) == 4, 'Combined prior has incorrect length.'
+    assert all((
+        prior[0] is var[0],
+        prior[1] is length[0],
+        prior[2] is length[0],
+        prior[3] is noise[0]
+    )), 'Combined prior does not reduce to its components.'
+
+    sample = prior.rvs(5)
+    assert sample.shape == (5, 4), \
+        'Combined prior sample has incorrect shape.'
+    lp = prior.logpdf(sample)
+    assert lp.size == 5, 'Sample log PDF does not match sample size.'
+    assert np.all(np.isfinite(lp)), 'Sample log PDF is not finite.'
