@@ -50,7 +50,7 @@ class MultiGP(object):
         self._x_range = x.ptp(axis=0)
 
         self._pca = PCA(y, npc=npc, normalize=True)
-        self._y_pc = self._pca.transform(y)
+        self._y_pc = self._pca.transform()
 
         template = GP(kernel)
         template.compute(self._standardize(x))
