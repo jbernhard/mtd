@@ -28,19 +28,19 @@ class Prior(list):
         Random sample.
 
         """
-        return np.squeeze(np.column_stack([dist.rvs(size) for dist in self]))
+        if len(self) == 1:
+            return self[0].rvs(size)
+        else:
+            return np.column_stack([dist.rvs(size) for dist in self])
 
     def logpdf(self, x):
         """
         Log PDF.
 
         """
-        x = np.asarray(x)
-
         if len(self) == 1:
             return self[0].logpdf(x)
         else:
-            x = np.squeeze(x.T)
             return sum(dist.logpdf(i) for dist, i in zip(self, x))
 
 

@@ -61,6 +61,6 @@ def test_priors():
     sample = prior.rvs(5)
     assert sample.shape == (5, 4), \
         'Combined prior sample has incorrect shape.'
-    lp = prior.logpdf(sample)
-    assert lp.size == 5, 'Sample log PDF does not match sample size.'
+    lp = tuple(prior.logpdf(s) for s in sample)
+    assert len(lp) == 5, 'Sample log PDF does not match sample size.'
     assert np.all(np.isfinite(lp)), 'Sample log PDF is not finite.'
