@@ -25,6 +25,8 @@ def test_priors():
     sample = var.rvs(5)
     assert np.all(sample > 0), \
         'VariancePrior:  must produce values > 0.'
+    assert np.all(np.isfinite(var.logpdf(sample))), \
+        'VariancePrior:  sample log PDF is not finite.'
     assert np.all(np.isinf(var.logpdf((-.5, -.01)))), \
         'VariancePrior:  log PDF must be -inf for x < 0.'
 
@@ -33,6 +35,9 @@ def test_priors():
     sample = length.rvs(5)
     assert np.all((sample >= 0) & (sample <= 1)), \
         'LengthScalePrior:  must produce values in [0, 1].'
+    # TODO: this fails sometimes!
+    assert np.all(np.isfinite(length.logpdf(sample))), \
+        'LengthScalePrior:  sample log PDF is not finite.'
     assert np.all(np.isinf(length.logpdf((-.5, 1.1)))), \
         'LengthScalePrior:  log PDF must be -inf outside [0, 1].'
 
