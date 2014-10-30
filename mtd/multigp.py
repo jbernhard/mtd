@@ -4,6 +4,7 @@ from __future__ import division
 
 import copy
 import multiprocessing
+import itertools
 
 import numpy as np
 import emcee
@@ -15,7 +16,7 @@ __all__ = 'MultiGP',
 
 
 def _train_gp(args):
-    gp, y, prior, nwalkers = args
+    gp, y, prior, nwalkers, nsteps = args
 
     def log_posterior(pars):
         log_prior = prior.logpdf(pars)
@@ -25,6 +26,9 @@ def _train_gp(args):
         return log_prior + gp.lnlikelihood(y, quiet=True)
 
     sampler = emcee.EnsembleSampler(nwalkers, len(prior), log_posterior)
+
+    # set kernel.pars to MAP point of chain
+
     return sampler
 
 
@@ -84,6 +88,13 @@ class MultiGP(object):
             Default is to use all available CPUs.
 
         """
+        jobs = zip(
+            self._GPs,
+            self._y_pc.T,
+            itertools.repeat(prior),
+            itertools.repeat(nwalkers),
+            itertools.repeat(nsteps)
+        )
+
         # pool = multiprocessing.Pool(processes=nproc)
-        # samplers = pool.map(_train_gp, zip(self._GPs, self._y_pc.T))
-        pass
+        # samplers = pool.map(_train_gp, jobs)
