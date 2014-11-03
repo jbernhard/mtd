@@ -2,6 +2,8 @@
 
 from __future__ import division
 
+import functools
+
 import numpy as np
 from scipy import stats
 
@@ -65,7 +67,27 @@ def LengthScalePrior(a=1., b=0.1):
     Beta prior for GP length scales (correlation lengths).
 
     """
-    return Prior([stats.beta(a, b)])
+    beta = stats.beta(a, b)
+
+    # The scipy beta distribution with b < 1 will generate random samples == 1,
+    # but then will also evaluate
+    #   beta.pdf(1) == inf,
+    # which is probably formally correct but will definitely not work as a
+    # prior for MCMC.  It also doesn't make sense for a GP length scale to be
+    # exactle zero.  As a workaround, hack the distribution to support
+    # (0, 1) exclusive instead of [0, 1] inclusive.
+
+    # small epsilon > 0
+    eps = 1e-4
+
+    # change distribution argument limits
+    beta.dist.a = eps
+    beta.dist.b = 1 - eps
+
+    # set location and scale for beta.rvs() only
+    beta.dist.rvs = functools.partial(beta.dist.rvs, loc=eps, scale=(1-2*eps))
+
+    return Prior([beta])
 
 
 class _log_gen(stats.rv_continuous):
