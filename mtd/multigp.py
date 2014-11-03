@@ -118,3 +118,20 @@ class MultiGP(object):
 
         """
         pass
+
+    def calibrate(self, yexp, yerr, prior, nwalkers, nsteps):
+        """
+        Calibrate GP input parameters to data.
+
+        yexp: (nfeatures,)
+            Experimental/calibration data.
+        yerr: (nfeatures,)
+            Errors on experimental data.
+        prior: Prior object
+            Priors for input parameters.
+        nwalkers: number of MCMC walkers
+        nsteps: number of MCMC steps per walker
+            Both the burn-in and production chains will have nsteps.
+
+        """
+        pass

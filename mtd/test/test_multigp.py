@@ -65,3 +65,9 @@ def test_multigp():
     )
 
     mgp.train(prior, 10, 10)
+
+    yexp = np.random.rand(nfeatures)
+    yerr = .1 * yexp
+    prior = priors.FlatPrior() * nfeatures
+
+    mgp.calibrate(yexp, yerr, prior, 10, 10)
