@@ -15,9 +15,7 @@ from .pca import PCA
 __all__ = 'MultiGP',
 
 
-def _train_gp(args):
-    gp, y, prior, nwalkers, nsteps = args
-
+def _train_gp(gp, y, prior, nwalkers, nsteps, **kwargs):
     def log_posterior(pars):
         log_prior = prior.logpdf(pars)
         if not np.isfinite(log_prior):
@@ -30,6 +28,46 @@ def _train_gp(args):
     # set kernel.pars to MAP point of chain
 
     return sampler
+
+
+class _GPProcess(multiprocessing.Process):
+    """
+    Run a GP in a separate process.
+
+    """
+    def __init__(self, x, y, kernel):
+        self._x = x
+        self._y = y
+        self._kernel = kernel
+        self._in_pipe, self._out_pipe = multiprocessing.Pipe()
+        super(_GPProcess, self).__init__()
+
+    def run(self):
+        gp = GP(self._kernel)
+        gp.compute(self._x)
+
+        for cmd, args, kwargs in iter(self._out_pipe.recv, None):
+            if cmd == 'predict':
+                result = gp.predict(self._y, *args, **kwargs)
+            elif cmd == 'train':
+                result = _train_gp(gp, self._y, *args, **kwargs)
+            else:
+                result = ValueError('Unknown command: {}.'.format(cmd))
+
+            self._out_pipe.send(result)
+
+    def send_cmd(self, cmd, *args, **kwargs):
+        self._in_pipe.send((cmd, args, kwargs))
+        return self
+
+    def stop(self):
+        self._in_pipe.send(None)
+
+    def get_result(self):
+        res = self._in_pipe.recv()
+        if isinstance(res, Exception):
+            raise res
+        return res
 
 
 class MultiGP(object):
