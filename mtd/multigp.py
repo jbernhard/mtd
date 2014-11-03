@@ -103,8 +103,15 @@ class MultiGP(object):
             p.stop()
 
     def _standardize(self, x):
-        """Scale x to the unit hypercube [0, 1]^ndim."""
-        return (x - self._x_min) / self._x_range
+        """
+        Scale x to the unit hypercube [0, 1]^ndim.
+
+        """
+        z = np.copy(x)
+        z -= self._x_min
+        z /= self._x_range
+
+        return z
 
     def train(self, prior, nwalkers, nsteps):
         """
