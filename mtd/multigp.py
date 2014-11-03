@@ -2,9 +2,7 @@
 
 from __future__ import division
 
-import copy
 import multiprocessing
-import itertools
 
 import numpy as np
 import emcee
@@ -80,40 +78,35 @@ class MultiGP(object):
         Model outputs.
     kernel: george kernel
         Template kernel for each GP.
+    npc: number of principal components to use
+        Passed directly to the PCA constructor.  A separate process will be
+        created for each PC.
 
     """
     def __init__(self, x, y, kernel, npc=None):
         x = np.atleast_2d(x)
         self._x_min = x.min(axis=0)
         self._x_range = x.ptp(axis=0)
+        x = self._standardize(x)
 
         self._pca = PCA(y, npc=npc, normalize=True)
-        self._y_pc = self._pca.transform()
 
-        template = GP(kernel)
-        template.compute(self._standardize(x))
-        self._GPs = tuple(copy.deepcopy(template)
-                          for _ in range(self._pca.npc))
+        self._procs = tuple(
+            _GPProcess(x, y, kernel)
+            for y in self._pca.transform().T
+        )
+        for p in self._procs:
+            p.start()
+
+    def __del__(self):
+        for p in self._procs:
+            p.stop()
 
     def _standardize(self, x):
         """Scale x to the unit hypercube [0, 1]^ndim."""
         return (x - self._x_min) / self._x_range
 
-    def __iter__(self):
-        """
-        Iterable of the individual GPs.
-
-        """
-        return iter(self._GPs)
-
-    def __len__(self):
-        """
-        Number of individual GPs (i.e. the number of PC).
-
-        """
-        return len(self._GPs)
-
-    def train(self, prior, nwalkers, nsteps, nproc=None):
+    def train(self, prior, nwalkers, nsteps):
         """
         Train the GPs, i.e. estimate the optimal hyperparameters via MCMC.
 
@@ -122,17 +115,6 @@ class MultiGP(object):
         nwalkers: number of MCMC walkers
         nsteps: number of MCMC steps per walker
             Both the burn-in and production chains will have nsteps.
-        nproc: number of GPs to train in parallel
-            Default is to use all available CPUs.
 
         """
-        jobs = zip(
-            self._GPs,
-            self._y_pc.T,
-            itertools.repeat(prior),
-            itertools.repeat(nwalkers),
-            itertools.repeat(nsteps)
-        )
-
-        # pool = multiprocessing.Pool(processes=nproc)
-        # samplers = pool.map(_train_gp, jobs)
+        pass

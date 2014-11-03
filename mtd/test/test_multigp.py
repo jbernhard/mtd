@@ -58,11 +58,6 @@ def test_multigp():
     )
     mgp = MultiGP(x, y, kernel, npc=nfeatures)
 
-    assert all(isinstance(g, george.GP) for g in mgp), \
-        'MultiGP does not iterate over GPs.'
-    assert len(mgp) == nfeatures, \
-        'Incorrect number of GPs.\n{} != {}'.format(len(mgp), nfeatures)
-
     prior = (
         [priors.VariancePrior()] +
         [priors.LengthScalePrior()]*ndim +
