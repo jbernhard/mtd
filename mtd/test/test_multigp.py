@@ -59,9 +59,9 @@ def test_multigp():
     mgp = MultiGP(x, y, kernel, npc=nfeatures)
 
     prior = (
-        [priors.VariancePrior()] +
-        [priors.LengthScalePrior()]*ndim +
-        [priors.NoisePrior()]
+        priors.VariancePrior() +
+        priors.LengthScalePrior()*ndim +
+        priors.NoisePrior()
     )
 
     mgp.train(prior, 10, 10)
