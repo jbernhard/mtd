@@ -11,19 +11,45 @@ __all__ = ('Prior', 'FlatPrior', 'VariancePrior', 'LengthScalePrior',
            'NoisePrior')
 
 
-class Prior(list):
+class Prior(object):
     """
-    Prior distribution(s).  Subclass of builtins.list; addition and
-    multiplication work exactly like a list.
+    Convenience class for handling prior distributions.  Prior objects can be
+    added together and multiplied like lists.
 
-    distributions: iterable of frozen scipy.stats distribution objects
+    dists: frozen scipy.stats distribution object(s)
 
     """
+    def __init__(self, *dists):
+        self._dists = list(dists)
+
+    def __len__(self):
+        return len(self._dists)
+
+    def __iter__(self):
+        return iter(self._dists)
+
+    def __getitem__(self, key):
+        return self._dists[key]
+
     def __add__(self, other):
-        return Prior(super(Prior, self).__add__(other))
+        return Prior(*(self._dists + other._dists))
 
     def __mul__(self, other):
-        return Prior(super(Prior, self).__mul__(other))
+        return Prior(*(self._dists * other))
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __iadd__(self, other):
+        self._dists += other._dists
+        return self
+
+    def __imul__(self, other):
+        self._dists *= other
+        return self
 
     def rvs(self, size=1):
         """
@@ -45,13 +71,27 @@ class Prior(list):
         else:
             return sum(dist.logpdf(i) for dist, i in zip(self, x))
 
+    def __getstate__(self):
+        return [(dist.dist.name, dist.args, dist.kwds) for dist in self]
+
+    def __setstate__(self, state):
+        self._dists = [self._recreate_dist(*s) for s in state]
+
+    @staticmethod
+    def _recreate_dist(name, args, kwds):
+        try:
+            dist = globals()[name]
+        except KeyError:
+            dist = getattr(stats, name)
+        return dist(*args, **kwds)
+
 
 def FlatPrior(lower=0., upper=1.):
     """
     Constant prior over a finite range.
 
     """
-    return Prior([stats.uniform(loc=lower, scale=upper-lower)])
+    return Prior(stats.uniform(loc=lower, scale=upper-lower))
 
 
 def VariancePrior(a=5., b=5.):
@@ -59,7 +99,7 @@ def VariancePrior(a=5., b=5.):
     Inverse gamma prior for GP variance.
 
     """
-    return Prior([stats.invgamma(a, scale=b)])
+    return Prior(stats.invgamma(a, scale=b))
 
 
 def LengthScalePrior(a=1., b=0.1):
@@ -87,7 +127,7 @@ def LengthScalePrior(a=1., b=0.1):
     # set location and scale for beta.rvs() only
     beta.dist.rvs = functools.partial(beta.dist.rvs, loc=eps, scale=(1-2*eps))
 
-    return Prior([beta])
+    return Prior(beta)
 
 
 class _log_gen(stats.rv_continuous):
@@ -106,4 +146,4 @@ def NoisePrior(lower=1e-8):
     Logarithmic (Jeffreys) prior for the noise term (nugget).
 
     """
-    return Prior([_log_gen(a=1e-16, name='log')(lower)])
+    return Prior(_log_gen(a=1e-16, name='log')(lower))

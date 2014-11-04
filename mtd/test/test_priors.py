@@ -2,6 +2,8 @@
 
 from __future__ import division
 
+import pickle
+
 import numpy as np
 
 from .. import priors
@@ -19,6 +21,8 @@ def test_priors():
         'FlatPrior:  log PDF must be zero in [0, 1].'
     assert np.all(np.isinf(flat.logpdf((-.5, 1.1)))), \
         'FlatPrior:  log PDF must be -inf outside [0, 1].'
+    assert isinstance(pickle.loads(pickle.dumps(flat)), priors.Prior), \
+        'FlatPrior:  not pickleable.'
 
     # This is a scipy.stats distribution so does not need much testing.
     var = priors.VariancePrior()
