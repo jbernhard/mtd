@@ -74,7 +74,7 @@ def LengthScalePrior(a=1., b=0.1):
     #   beta.pdf(1) == inf,
     # which is probably formally correct but will definitely not work as a
     # prior for MCMC.  It also doesn't make sense for a GP length scale to be
-    # exactle zero.  As a workaround, hack the distribution to support
+    # exactly zero.  As a workaround, hack the distribution to support
     # (0, 1) exclusive instead of [0, 1] inclusive.
 
     # small epsilon > 0
