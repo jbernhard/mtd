@@ -43,6 +43,8 @@ def test_priors():
         'LengthScalePrior:  sample log PDF is not finite.'
     assert np.all(np.isinf(length.logpdf((-.5, 1.1)))), \
         'LengthScalePrior:  log PDF must be -inf outside [0, 1].'
+    assert isinstance(pickle.loads(pickle.dumps(length)), priors.Prior), \
+        'LengthScalePrior:  not pickleable.'
 
     # This one is implemented in mtd so it's tested a bit more rigorously.
     noise = priors.NoisePrior()
@@ -55,6 +57,8 @@ def test_priors():
         'NoisePrior:  log PDF must be 1/x.'
     assert np.all(np.isinf(noise.logpdf((-.5, 0.)))), \
         'NoisePrior:  log PDF must be -inf for x <= 0.'
+    assert isinstance(pickle.loads(pickle.dumps(noise)), priors.Prior), \
+        'NoisePrior:  not pickleable.'
 
     # Test combining priors.
     prior = var + 2*length + noise

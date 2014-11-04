@@ -2,8 +2,6 @@
 
 from __future__ import division
 
-import functools
-
 import numpy as np
 from scipy import stats
 
@@ -102,32 +100,37 @@ def VariancePrior(a=5., b=5.):
     return Prior(stats.invgamma(a, scale=b))
 
 
+class _beta_mod_gen(stats.beta.__class__):
+    """
+    A beta distribution modified to work as a Bayesian prior.
+
+    The scipy beta dist with b < 1 will generate random samples == 1, but then
+    will also evaluate beta.pdf(1) == inf, which is probably formally correct
+    but will definitely not work as a prior.  It also doesn't make sense for a
+    GP length scale to be exactly zero.  As a workaround, hack the distribution
+    to support (0, 1) exclusive instead of [0, 1] inclusive.
+
+    """
+    # small epsilon > 0
+    _eps = 1e-4
+
+    def _rvs(self, *args):
+        # coerce random samples to (0, 1) exclusive
+        rvs = super(stats.beta.__class__, self)._rvs(*args)
+        rvs *= 1 - 2*self._eps
+        rvs += self._eps
+        return rvs
+
+_beta_mod = _beta_mod_gen(a=_beta_mod_gen._eps, b=(1.-_beta_mod_gen._eps),
+                          name='_beta_mod')
+
+
 def LengthScalePrior(a=1., b=0.1):
     """
     Beta prior for GP length scales (correlation lengths).
 
     """
-    beta = stats.beta(a, b)
-
-    # The scipy beta distribution with b < 1 will generate random samples == 1,
-    # but then will also evaluate
-    #   beta.pdf(1) == inf,
-    # which is probably formally correct but will definitely not work as a
-    # prior for MCMC.  It also doesn't make sense for a GP length scale to be
-    # exactly zero.  As a workaround, hack the distribution to support
-    # (0, 1) exclusive instead of [0, 1] inclusive.
-
-    # small epsilon > 0
-    eps = 1e-4
-
-    # change distribution argument limits
-    beta.dist.a = eps
-    beta.dist.b = 1 - eps
-
-    # set location and scale for beta.rvs() only
-    beta.dist.rvs = functools.partial(beta.dist.rvs, loc=eps, scale=(1-2*eps))
-
-    return Prior(beta)
+    return Prior(_beta_mod(a, b))
 
 
 class _log_gen(stats.rv_continuous):
@@ -140,10 +143,12 @@ class _log_gen(stats.rv_continuous):
     def _logpdf(self, x, a):
         return -np.log(x)  # not normalized!
 
+_log = _log_gen(a=1e-16, name='_log')
+
 
 def NoisePrior(lower=1e-8):
     """
     Logarithmic (Jeffreys) prior for the noise term (nugget).
 
     """
-    return Prior(_log_gen(a=1e-16, name='log')(lower))
+    return Prior(_log(lower))
