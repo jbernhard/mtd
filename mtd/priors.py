@@ -3,7 +3,7 @@
 from __future__ import division
 
 import numpy as np
-from scipy import stats
+from scipy.stats import distributions
 
 __all__ = ('Prior', 'FlatPrior', 'VariancePrior', 'LengthScalePrior',
            'NoisePrior')
@@ -73,15 +73,8 @@ class Prior(object):
         return [(dist.dist.name, dist.args, dist.kwds) for dist in self]
 
     def __setstate__(self, state):
-        self._dists = [self._recreate_dist(*s) for s in state]
-
-    @staticmethod
-    def _recreate_dist(name, args, kwds):
-        try:
-            dist = globals()[name]
-        except KeyError:
-            dist = getattr(stats, name)
-        return dist(*args, **kwds)
+        self._dists = [getattr(distributions, name)(*args, **kwds)
+                       for name, args, kwds in state]
 
 
 def FlatPrior(low=0., high=1.):
@@ -91,7 +84,7 @@ def FlatPrior(low=0., high=1.):
     low, high : min, max of range
 
     """
-    return Prior(stats.uniform(loc=low, scale=(high-low)))
+    return Prior(distributions.uniform(loc=low, scale=(high-low)))
 
 
 def VariancePrior(a=5., b=5.):
@@ -102,10 +95,10 @@ def VariancePrior(a=5., b=5.):
     b : scale parameter
 
     """
-    return Prior(stats.invgamma(a, scale=b))
+    return Prior(distributions.invgamma(a, scale=b))
 
 
-class _beta_mod_gen(stats.beta.__class__):
+class _beta_mod_gen(distributions.beta.__class__):
     """
     A beta distribution modified to work as a Bayesian prior.
 
@@ -121,13 +114,16 @@ class _beta_mod_gen(stats.beta.__class__):
 
     def _rvs(self, *args):
         # coerce random samples to (0, 1) exclusive
-        rvs = super(stats.beta.__class__, self)._rvs(*args)
+        rvs = super(distributions.beta.__class__, self)._rvs(*args)
         rvs *= 1 - 2*self._eps
         rvs += self._eps
         return rvs
 
-_beta_mod = _beta_mod_gen(a=_beta_mod_gen._eps, b=(1.-_beta_mod_gen._eps),
-                          name='_beta_mod')
+distributions.beta_mod = _beta_mod_gen(
+    a=_beta_mod_gen._eps,
+    b=(1.-_beta_mod_gen._eps),
+    name='beta_mod'
+)
 
 
 def LengthScalePrior(a=1., b=0.1):
@@ -137,17 +133,17 @@ def LengthScalePrior(a=1., b=0.1):
     a, b : beta shape parameters
 
     """
-    return Prior(_beta_mod(a, b))
+    return Prior(distributions.beta_mod(a, b))
 
 
-class _log_gen(stats.rv_continuous):
+class _log_gen(distributions.rv_continuous):
     def _rvs(self, a):
         return np.exp(np.random.uniform(np.log(a), 0, self._size))
 
     def _logpdf(self, x, a):
         return -np.log(x)  # not normalized!
 
-_log = _log_gen(a=1e-16, name='_log', shapes='a')
+distributions.logarithmic = _log_gen(a=1e-16, name='logarithmic', shapes='a')
 
 
 def NoisePrior(low=1e-8):
@@ -158,4 +154,4 @@ def NoisePrior(low=1e-8):
         Does not affect log probability.
 
     """
-    return Prior(_log(low))
+    return Prior(distributions.logarithmic(low))
