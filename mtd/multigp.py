@@ -13,21 +13,6 @@ from .pca import PCA
 __all__ = 'MultiGP',
 
 
-def _train_gp(gp, y, prior, nwalkers, nsteps, **kwargs):
-    def log_posterior(pars):
-        log_prior = prior.logpdf(pars)
-        if not np.isfinite(log_prior):
-            return -np.inf
-        gp.kernel.pars = pars
-        return log_prior + gp.lnlikelihood(y, quiet=True)
-
-    sampler = emcee.EnsembleSampler(nwalkers, len(prior), log_posterior)
-
-    # set kernel.pars to MAP point of chain
-
-    return sampler
-
-
 class _GPProcess(multiprocessing.Process):
     """
     Run a GP in a separate process.
@@ -43,16 +28,57 @@ class _GPProcess(multiprocessing.Process):
     def run(self):
         gp = GP(self._kernel)
         gp.compute(self._x)
+        y = self._y
+        pipe = self._out_pipe
 
-        for cmd, args, kwargs in iter(self._out_pipe.recv, None):
+        for cmd, args, kwargs in iter(pipe.recv, None):
             if cmd == 'predict':
-                result = gp.predict(self._y, *args, **kwargs)
+                result = gp.predict(y, *args, **kwargs)
+
             elif cmd == 'train':
-                result = _train_gp(gp, self._y, *args, **kwargs)
+                prior, nwalkers, nsteps = args
+
+                def log_post(pars):
+                    log_prior = prior.logpdf(pars)
+                    if not np.isfinite(log_prior):
+                        return -np.inf
+                    gp.kernel.pars = pars
+                    return log_prior + gp.lnlikelihood(y, quiet=True)
+
+                ndim = len(gp.kernel)
+                sampler = emcee.EnsembleSampler(nwalkers, ndim, log_post)
+
+                # sample random initial position from prior
+                pos0 = prior.rvs(nwalkers)
+
+                # run burn-in chain
+                pos1, *_ = sampler.run_mcmc(pos0, nsteps, storechain=False)
+                sampler.reset()
+
+                # run production chain
+                sampler.run_mcmc(pos1, nsteps)
+
+                # set hyperparameters to max posterior point from chain
+                gp.kernel.pars = sampler.flatchain[
+                    sampler.lnprobability.argmax()
+                ]
+
+                result = None
+
+            elif cmd == 'get_sampler_attr':
+                try:
+                    result = getattr(sampler, args[0])
+                except NameError:
+                    result = RuntimeError(
+                        'Training sampler has not been created yet.'
+                    )
+                except AttributeError as e:
+                    result = e
+
             else:
                 result = ValueError('Unknown command: {}.'.format(cmd))
 
-            self._out_pipe.send(result)
+            pipe.send(result)
 
     def send_cmd(self, cmd, *args, **kwargs):
         self._in_pipe.send((cmd, args, kwargs))
@@ -124,7 +150,23 @@ class MultiGP(object):
             Both the burn-in and production chains will have nsteps.
 
         """
-        pass
+        for p in self._procs:
+            p.send_cmd('train', prior, nwalkers, nsteps)
+        for p in self._procs:
+            # wait for results
+            p.get_result()
+
+    def get_training_sampler_attr(self, n, attr):
+        """
+        Retrieve an attribute from a hyperparameter training sampler.
+
+        n : integer
+            Index of sampler to access.
+        attr : string
+            Attribute name.
+
+        """
+        return self._procs[n].send_cmd('get_sampler_attr', attr).get_result()
 
     def calibrate(self, yexp, yerr, prior, nwalkers, nsteps):
         """
