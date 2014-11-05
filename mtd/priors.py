@@ -35,9 +35,6 @@ class Prior(object):
     def __mul__(self, other):
         return Prior(*(self._dists * other))
 
-    def __radd__(self, other):
-        return self.__add__(other)
-
     def __rmul__(self, other):
         return self.__mul__(other)
 

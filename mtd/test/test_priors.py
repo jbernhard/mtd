@@ -48,25 +48,27 @@ def test_priors():
     length = priors.LengthScalePrior()
     noise = priors.NoisePrior()
 
-    prior = length
+    # build up a compound prior in a funny way to test all operations
+    prior = var
     prior *= 2
-    prior = var + prior
-    prior += noise
+    prior += 2*length + noise
 
-    assert len(prior) == 4, 'Combined prior has incorrect length.'
+    print(len(prior))
+    assert len(prior) == 5, 'Combined prior has incorrect length.'
     assert all((
         prior[0] is var[0],
-        prior[1] is length[0],
+        prior[1] is var[0],
         prior[2] is length[0],
-        prior[3] is noise[0]
+        prior[3] is length[0],
+        prior[4] is noise[0]
     )), 'Combined prior does not reduce to its components.'
 
-    sample = prior.rvs(5)
-    assert sample.shape == (5, 4), \
+    sample = prior.rvs(4)
+    assert sample.shape == (4, 5), \
         'Combined prior: sample has incorrect shape.'
 
     lp = tuple(prior.logpdf(s) for s in sample)
-    assert len(lp) == 5, \
+    assert len(lp) == 4, \
         'Combined prior: log PDF does not match sample size.'
     assert np.all(np.isfinite(lp)), \
         'Combined prior: sample log PDF is not finite.'
