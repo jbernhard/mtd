@@ -9,6 +9,16 @@ import numpy as np
 from .. import priors
 
 
+def _check_pickle(prior, name):
+    prior2 = pickle.loads(pickle.dumps(prior))
+    conds = (
+        isinstance(prior2, priors.Prior),
+        len(prior2) == len(prior),
+        prior2.__getstate__() == prior.__getstate__()
+    )
+    assert all(conds), '{}: not pickleable.'.format(name)
+
+
 def test_priors():
     """prior distributions"""
 
@@ -31,8 +41,7 @@ def test_priors():
             '{}: sample log PDF is not finite.'.format(name)
         assert np.all(np.isinf(p.logpdf((a - 1., b + 1.)))), \
             '{}: log PDF must be -inf outside [{}, {}].'.format(name, a, b)
-        assert isinstance(pickle.loads(pickle.dumps(p)), priors.Prior), \
-            '{}: not pickleable.'.format(name)
+        _check_pickle(p, name)
 
     # Test combining priors.
     var = priors.VariancePrior()
@@ -61,7 +70,4 @@ def test_priors():
         'Combined prior: log PDF does not match sample size.'
     assert np.all(np.isfinite(lp)), \
         'Combined prior: sample log PDF is not finite.'
-
-    prior2 = pickle.loads(pickle.dumps(prior))
-    assert isinstance(prior2, priors.Prior) and len(prior2) == 4, \
-        '{}: not pickleable.'.format(name)
+    _check_pickle(prior, 'Combined prior')
