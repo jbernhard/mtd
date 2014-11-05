@@ -137,13 +137,10 @@ class _log_gen(stats.rv_continuous):
     def _rvs(self, a):
         return np.exp(np.random.uniform(np.log(a), 0, self._size))
 
-    def _pdf(self, x, a):
-        return 1/x  # not normalized!
-
     def _logpdf(self, x, a):
         return -np.log(x)  # not normalized!
 
-_log = _log_gen(a=1e-16, name='_log')
+_log = _log_gen(a=1e-16, name='_log', shapes='a')
 
 
 def NoisePrior(lower=1e-8):
