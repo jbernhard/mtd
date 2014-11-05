@@ -61,3 +61,7 @@ def test_priors():
         'Combined prior: log PDF does not match sample size.'
     assert np.all(np.isfinite(lp)), \
         'Combined prior: sample log PDF is not finite.'
+
+    prior2 = pickle.loads(pickle.dumps(prior))
+    assert isinstance(prior2, priors.Prior) and len(prior2) == 4, \
+        '{}: not pickleable.'.format(name)
