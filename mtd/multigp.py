@@ -140,6 +140,17 @@ class MultiGP(object):
 
         return z
 
+    def _destandardize(self, z):
+        """
+        Scale z back from the unit hypercube.
+
+        """
+        x = np.copy(z)
+        x *= self._x_range
+        x += self._x_min
+
+        return x
+
     def train(self, prior, nwalkers, nsteps):
         """
         Train the GPs, i.e. estimate the optimal hyperparameters via MCMC.
@@ -232,3 +243,18 @@ class MultiGP(object):
 
         # run production chain
         sampler.run_mcmc(pos1, nsteps)
+
+        self._sampler = sampler
+
+    def get_calibration_chain(self, flat=True):
+        """
+        Retrieve the calibration MCMC chain.
+
+        flat : boolean, default True
+            Whether to return the normal or flat chain.
+
+        """
+        chain = self._sampler.flatchain if flat else self._sampler.chain
+        chain = self._destandardize(chain)
+
+        return chain

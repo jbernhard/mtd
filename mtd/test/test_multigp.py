@@ -94,3 +94,11 @@ def test_multigp():
     prior = priors.FlatPrior() * ndim
 
     mgp.calibrate(yexp, yerr, prior, nwalkers, nsteps)
+
+    flatchain = mgp.get_calibration_chain(flat=True)
+    assert_equal(flatchain.shape, (nwalkers*nsteps, ndim),
+        err_msg='Calibration flatchain has incorrect shape.')
+
+    chain = mgp.get_calibration_chain(flat=False)
+    assert_equal(chain.shape, (nwalkers, nsteps, ndim),
+        err_msg='Calibration chain has incorrect shape.')
