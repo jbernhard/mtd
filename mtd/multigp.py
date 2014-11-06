@@ -201,8 +201,8 @@ class MultiGP(object):
 
         yexp: (nfeatures,)
             Experimental/calibration data.
-        yerr: (nfeatures,)
-            Errors on experimental data.
+        yerr: float
+            Fractional error on experimental data.
         prior: Prior object
             Priors for input parameters.
         nwalkers: number of MCMC walkers
@@ -211,14 +211,14 @@ class MultiGP(object):
 
         """
         zexp = self._pca.transform(yexp)
-        zerr = None  # FIXME
+        zerrsq = np.square(yerr*zexp)
 
         def log_post(theta):
             log_prior = prior.logpdf(theta)
             if not np.isfinite(log_prior):
                 return -np.inf
-            zmodel = self._predict(theta, mean_only=True)
-            log_prob = -.5*np.sum(np.square((zmodel-zexp)/zerr))
+            zmodel = self._predict_pc(theta)
+            log_prob = -.5*np.sum(np.square(zmodel-zexp)/zerrsq)
             return log_prior + log_prob
 
         sampler = emcee.EnsembleSampler(nwalkers, self._ndim, log_post)

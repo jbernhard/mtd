@@ -90,7 +90,7 @@ def test_multigp():
     assert_raises(AttributeError, mgp.get_training_sampler_attr, 0, 'hello')
 
     yexp = np.random.rand(nfeatures)
-    yerr = .1 * yexp
-    prior = priors.FlatPrior() * nfeatures
+    yerr = .1
+    prior = priors.FlatPrior() * ndim
 
     mgp.calibrate(yexp, yerr, prior, nwalkers, nsteps)
