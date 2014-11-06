@@ -134,7 +134,7 @@ class MultiGP(object):
         Scale x to the unit hypercube [0, 1]^ndim.
 
         """
-        z = np.copy(x)
+        z = np.array(x, dtype=float)
         z -= self._x_min
         z /= self._x_range
 
@@ -145,7 +145,7 @@ class MultiGP(object):
         Scale z back from the unit hypercube.
 
         """
-        x = np.copy(z)
+        x = np.array(z, dtype=float)
         x *= self._x_range
         x += self._x_min
 

@@ -66,6 +66,18 @@ def test_multigp():
     # instantiate MultiGP
     mgp = MultiGP(x, y, kernel, npc=nfeatures)
 
+    # test [de]standardization
+    xmin = x.min(axis=0)
+    assert_equal(mgp._standardize(xmin), np.zeros(ndim),
+                 err_msg='x minimum must standardize to zero.')
+    assert_equal(mgp._destandardize(np.zeros(ndim, dtype=int)), xmin,
+                 err_msg='Zero must destandardize to x minimum.')
+    xmax = x.max(axis=0)
+    assert_equal(mgp._standardize(xmax), np.ones(ndim, dtype=int),
+                 err_msg='x maximum must standardize to one.')
+    assert_equal(mgp._destandardize(np.ones(ndim)), xmax,
+                 err_msg='One must destandardize to x maximum.')
+
     assert_allclose(
         y, mgp.predict(x),
         err_msg='MultiGP does not predict noise-free training points exactly.'
