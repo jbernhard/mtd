@@ -3,7 +3,7 @@
 from __future__ import division
 
 import numpy as np
-from numpy.testing import assert_array_equal, assert_equal
+from numpy.testing import assert_array_equal, assert_equal, assert_allclose
 from nose.tools import assert_raises
 import george
 
@@ -51,8 +51,8 @@ def test_multigp():
     nsamples, ndim, nfeatures = 5, 2, 2
     x = np.random.rand(nsamples, ndim)
     y = np.random.rand(nsamples, nfeatures)
-    
-    # create kernel with standard hyperparameters and conjuage prior
+
+    # create kernel with standard hyperparameters and conjugate prior
     kernel = (
         1.*kernels.ExpSquaredKernel(np.ones(ndim), ndim=ndim) +
         kernels.WhiteKernel(1e-8, ndim=ndim)
@@ -65,6 +65,11 @@ def test_multigp():
 
     # instantiate MultiGP
     mgp = MultiGP(x, y, kernel, npc=nfeatures)
+
+    assert_allclose(
+        y, mgp.predict(x),
+        err_msg='MultiGP does not predict noise-free training points exactly.'
+    )
 
     # can't get the chain before training
     assert_raises(RuntimeError, mgp.get_training_sampler_attr, 0, 'chain')

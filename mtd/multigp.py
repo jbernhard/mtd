@@ -179,7 +179,7 @@ class MultiGP(object):
         """
         for p in self._procs:
             p.send_cmd('predict', t, mean_only=True)
-        z = np.array([p.get_result() for p in self._procs])
+        z = np.column_stack([p.get_result() for p in self._procs])
 
         return z
 
