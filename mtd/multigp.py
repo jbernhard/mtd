@@ -114,6 +114,7 @@ class MultiGP(object):
         self._x_min = x.min(axis=0)
         self._x_range = x.ptp(axis=0)
         x = self._standardize(x)
+        self._ndim = x.shape[1]
 
         self._pca = PCA(y, npc=npc, normalize=True)
 
@@ -168,6 +169,32 @@ class MultiGP(object):
         """
         return self._procs[n].send_cmd('get_sampler_attr', attr).get_result()
 
+    def _predict_pc(self, t):
+        """
+        Predict principal components at test points.
+
+        t : (ntest, ndim)
+            Test points.  Must already be standardized.
+
+        """
+        for p in self._procs:
+            p.send_cmd('predict', t, mean_only=True)
+        z = np.array([p.get_result() for p in self._procs])
+
+        return z
+
+    def predict(self, t):
+        """
+        Calculate predictions at test points.
+
+        t : (ntest, ndim)
+
+        """
+        t = self._standardize(np.atleast_2d(t))
+        z = self._predict_pc(t)
+
+        return self._pca.inverse(z)
+
     def calibrate(self, yexp, yerr, prior, nwalkers, nsteps):
         """
         Calibrate GP input parameters to data.
@@ -183,4 +210,25 @@ class MultiGP(object):
             Both the burn-in and production chains will have nsteps.
 
         """
-        pass
+        zexp = self._pca.transform(yexp)
+        zerr = None  # FIXME
+
+        def log_post(theta):
+            log_prior = prior.logpdf(theta)
+            if not np.isfinite(log_prior):
+                return -np.inf
+            zmodel = self._predict(theta, mean_only=True)
+            log_prob = -.5*np.sum(np.square((zmodel-zexp)/zerr))
+            return log_prior + log_prob
+
+        sampler = emcee.EnsembleSampler(nwalkers, self._ndim, log_post)
+
+        # sample random initial position from prior
+        pos0 = prior.rvs(nwalkers)
+
+        # run burn-in chain
+        pos1, *_ = sampler.run_mcmc(pos0, nsteps, storechain=False)
+        sampler.reset()
+
+        # run production chain
+        sampler.run_mcmc(pos1, nsteps)
