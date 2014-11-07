@@ -70,10 +70,10 @@ def test_multigp():
     xmin = x.min(axis=0)
     assert_equal(mgp._standardize(xmin), np.zeros(ndim),
                  err_msg='x minimum must standardize to zero.')
-    assert_equal(mgp._destandardize(np.zeros(ndim, dtype=int)), xmin,
+    assert_equal(mgp._destandardize(np.zeros(ndim)), xmin,
                  err_msg='Zero must destandardize to x minimum.')
     xmax = x.max(axis=0)
-    assert_equal(mgp._standardize(xmax), np.ones(ndim, dtype=int),
+    assert_equal(mgp._standardize(xmax), np.ones(ndim),
                  err_msg='x maximum must standardize to one.')
     assert_equal(mgp._destandardize(np.ones(ndim)), xmax,
                  err_msg='One must destandardize to x maximum.')

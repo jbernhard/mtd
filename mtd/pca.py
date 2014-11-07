@@ -5,6 +5,8 @@ from __future__ import division
 import numpy as np
 from scipy import linalg
 
+from .util import atleast_2d_column
+
 __all__ = 'PCA',
 
 
@@ -30,7 +32,7 @@ class PCA(object):
 
     """
     def __init__(self, y, npc=None, normalize=False):
-        y = np.copy(np.atleast_2d(y))
+        y = atleast_2d_column(y, copy=True)
         self._mean = y.mean(axis=0)
         y -= self._mean
 
@@ -85,7 +87,7 @@ class PCA(object):
             U, s, Vt = self._svd
             return (U[:, :self.npc]) * (s[:self.npc])
 
-        y = np.copy(np.atleast_2d(y))
+        y = atleast_2d_column(y, copy=True)
 
         y -= self._mean
         if self._std is not None:
@@ -100,7 +102,7 @@ class PCA(object):
         z: (nobservations, npc)
 
         """
-        y = np.dot(z, self.pc[:self.npc])
+        y = np.dot(atleast_2d_column(z), self.pc[:self.npc])
 
         if self._std is not None:
             y *= self._std

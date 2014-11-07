@@ -9,6 +9,7 @@ import emcee
 from george import GP
 
 from .pca import PCA
+from .util import atleast_2d_column
 
 __all__ = 'MultiGP',
 
@@ -110,7 +111,7 @@ class MultiGP(object):
 
     """
     def __init__(self, x, y, kernel, npc=None):
-        x = np.atleast_2d(x)
+        x = atleast_2d_column(x)
         self._x_min = x.min(axis=0)
         self._x_range = x.ptp(axis=0)
         x = self._standardize(x)
@@ -134,7 +135,7 @@ class MultiGP(object):
         Scale x to the unit hypercube [0, 1]^ndim.
 
         """
-        z = np.array(x, dtype=float)
+        z = np.array(x, copy=True)
         z -= self._x_min
         z /= self._x_range
 
@@ -145,7 +146,7 @@ class MultiGP(object):
         Scale z back from the unit hypercube.
 
         """
-        x = np.array(z, dtype=float)
+        x = np.array(z, copy=True)
         x *= self._x_range
         x += self._x_min
 
@@ -201,7 +202,7 @@ class MultiGP(object):
         t : (ntest, ndim)
 
         """
-        t = self._standardize(np.atleast_2d(t))
+        t = self._standardize(atleast_2d_column(t))
         z = self._predict_pc(t)
 
         return self._pca.inverse(z)
@@ -221,7 +222,7 @@ class MultiGP(object):
             Both the burn-in and production chains will have nsteps.
 
         """
-        zexp = self._pca.transform(yexp)
+        zexp = self._pca.transform(np.atleast_2d(yexp))
         zerrsq = np.square(yerr*zexp)
 
         def log_post(theta):
