@@ -244,6 +244,9 @@ class MultiGP(object):
         # run production chain
         sampler.run_mcmc(pos1, nsteps)
 
+        # delete ref. to log_post()
+        sampler.lnprobfn = None
+
         self._sampler = sampler
 
     def get_calibration_chain(self, flat=True):
