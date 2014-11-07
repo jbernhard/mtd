@@ -53,7 +53,7 @@ class _GPProcess(multiprocessing.Process):
                 pos0 = prior.rvs(nwalkers)
 
                 # run burn-in chain
-                pos1, *_ = sampler.run_mcmc(pos0, nsteps, storechain=False)
+                pos1 = sampler.run_mcmc(pos0, nsteps, storechain=False)[0]
                 sampler.reset()
 
                 # run production chain
@@ -239,7 +239,7 @@ class MultiGP(object):
         pos0 = prior.rvs(nwalkers)
 
         # run burn-in chain
-        pos1, *_ = sampler.run_mcmc(pos0, nsteps, storechain=False)
+        pos1 = sampler.run_mcmc(pos0, nsteps, storechain=False)[0]
         sampler.reset()
 
         # run production chain
