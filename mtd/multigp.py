@@ -117,6 +117,10 @@ class MultiGP(object):
         x = self._standardize(x)
         self._ndim = x.shape[1]
 
+        y = atleast_2d_column(y)
+        if x.shape[0] != y.shape[0]:
+            raise ValueError('x and y must have same number of samples.')
+
         self._pca = PCA(y, npc=npc, normalize=True)
 
         self._procs = tuple(
@@ -127,8 +131,11 @@ class MultiGP(object):
             p.start()
 
     def __del__(self):
-        for p in self._procs:
-            p.stop()
+        try:
+            for p in self._procs:
+                p.stop()
+        except AttributeError:
+            pass
 
     def _standardize(self, x):
         """

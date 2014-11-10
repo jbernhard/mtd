@@ -63,6 +63,9 @@ def test_multigp():
         priors.NoisePrior()
     )
 
+    # dimension mismatch
+    assert_raises(ValueError, MultiGP, x, y[:3], kernel)
+
     # instantiate MultiGP
     mgp = MultiGP(x, y, kernel, npc=nfeatures)
 
@@ -114,3 +117,6 @@ def test_multigp():
     chain = mgp.get_calibration_chain(flat=False)
     assert_equal(chain.shape, (nwalkers, nsteps, ndim),
                  err_msg='Calibration chain has incorrect shape.')
+
+    # wrong number of dimensions
+    assert_raises(ValueError, mgp.predict, [[.5, .5, .5]])
