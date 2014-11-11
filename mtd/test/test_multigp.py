@@ -69,6 +69,9 @@ def test_multigp():
     # instantiate MultiGP
     mgp = MultiGP(x, y, kernel, npc=nfeatures)
 
+    assert len(mgp) == nfeatures, \
+        'MultiGP has incorrect length (number of individual GPs).'
+
     # test [de]standardization
     xmin = x.min(axis=0)
     assert_equal(mgp._standardize(xmin), np.zeros(ndim),

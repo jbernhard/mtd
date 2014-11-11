@@ -130,6 +130,9 @@ class MultiGP(object):
         for p in self._procs:
             p.start()
 
+    def __len__(self):
+        return self._pca.npc
+
     def __del__(self):
         try:
             for p in self._procs:
