@@ -21,9 +21,9 @@ class PCA(object):
         If an integer, explicitly sets the number of PC.  If a float in (0, 1),
         it sets the minimum explained variance fraction; the number of PC is
         automatically determined.  If not provided, all PC are used.
-    normalize:  boolean, default false
-        Whether to normalize features to unit variance (i.e. divide the columns
-        of y by their standard deviation).
+
+    Principal components are "whitened" so that each has unit variance.  This
+    simplifies prior specifications for GP training.
 
     Note that the full SVD of y is always saved:
       - PCA.weights and PCA.pc always return information for all PC.
@@ -31,20 +31,17 @@ class PCA(object):
         and inverse(). It may be reset at any time.
 
     """
-    def __init__(self, y, npc=None, normalize=False):
+    def __init__(self, y, npc=None):
         y = atleast_2d_column(y, copy=True)
         self._mean = y.mean(axis=0)
         y -= self._mean
 
-        if normalize:
-            self._std = y.std(axis=0)
-            y /= self._std
-        else:
-            self._std = None
-
         self._svd = linalg.svd(y, full_matrices=False)
 
-        nfeatures = y.shape[1]
+        nsamples, nfeatures = y.shape
+        self._sqrt_nsamples = np.sqrt(nsamples)
+
+        # determine number of PC
         if npc is None or npc > nfeatures:
             self.npc = nfeatures
         elif 0 < npc < 1:
@@ -53,13 +50,30 @@ class PCA(object):
             self.npc = npc
 
     @property
+    def std(self):
+        """
+        Standard deviation (sqrt of variance) explained by each PC.
+
+        """
+        s = self._svd[1]
+        return s / self._sqrt_nsamples
+
+    @property
+    def var(self):
+        """
+        Variance explained by each PC.
+
+        """
+        return np.square(self.std)
+
+    @property
     def weights(self):
         """
         Fraction of variance explained by each PC.
 
         """
-        s_sq = np.square(self._svd[1])
-        return s_sq / s_sq.sum()
+        var = self.var
+        return var / var.sum()
 
     @property
     def pc(self):
@@ -79,21 +93,23 @@ class PCA(object):
 
         """
         # SVD:  y = U.S.Vt
-        # transformed y:  z = y.V = (U.S.Vt).V = U.S
+        # transformed and whitened y:  z = y.V.S^-1*sqrt(nsamples)
+        #                                = (U.S.Vt).V.S^-1*sqrt(nsamples)
+        #                                = U*sqrt(nsamples)
         # Therefore the left-singular vectors U can be reused to calculate the
         # PC of the original y.  Right-singular vectors V are used for any
         # other y.
         if y is None:
-            U, s, Vt = self._svd
-            return (U[:, :self.npc]) * (s[:self.npc])
+            U = self._svd[0]
+            return self._sqrt_nsamples * U[:, :self.npc]
 
         y = atleast_2d_column(y, copy=True)
-
         y -= self._mean
-        if self._std is not None:
-            y /= self._std
 
-        return np.dot(y, self.pc[:self.npc].T)
+        z = np.dot(y, self.pc[:self.npc].T)
+        z /= self.std[:self.npc]
+
+        return z
 
     def inverse(self, z):
         """
@@ -102,10 +118,10 @@ class PCA(object):
         z: (nobservations, npc)
 
         """
-        y = np.dot(atleast_2d_column(z), self.pc[:self.npc])
+        z = atleast_2d_column(z, copy=True)
+        z *= self.std[:self.npc]
 
-        if self._std is not None:
-            y *= self._std
+        y = np.dot(z, self.pc[:self.npc])
         y += self._mean
 
         return y

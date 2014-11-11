@@ -121,7 +121,7 @@ class MultiGP(object):
         if x.shape[0] != y.shape[0]:
             raise ValueError('x and y must have same number of samples.')
 
-        self._pca = PCA(y, npc=npc, normalize=True)
+        self._pca = PCA(y, npc=npc)
 
         self._procs = tuple(
             _GPProcess(x, y, kernel)
