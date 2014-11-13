@@ -19,12 +19,12 @@ class _GPProcess(multiprocessing.Process):
     Run a GP in a separate process.
 
     """
-    def __init__(self, x, y, kernel):
+    def __init__(self, x, y, kernel, name=None):
         self._x = x
         self._y = y
         self._kernel = kernel
         self._in_pipe, self._out_pipe = multiprocessing.Pipe()
-        super(_GPProcess, self).__init__()
+        super(_GPProcess, self).__init__(name=name)
 
     def run(self):
         gp = GP(self._kernel)
@@ -38,6 +38,7 @@ class _GPProcess(multiprocessing.Process):
 
             elif cmd == 'train':
                 prior, nwalkers, nsteps = args
+                verbose = kwargs.pop('verbose', False)
 
                 def log_post(pars):
                     log_prior = prior.logpdf(pars)
@@ -52,12 +53,21 @@ class _GPProcess(multiprocessing.Process):
                 # sample random initial position from prior
                 pos0 = prior.rvs(nwalkers)
 
+                if verbose:
+                    print(self.name, 'starting training burn-in')
+
                 # run burn-in chain
                 pos1 = sampler.run_mcmc(pos0, nsteps, storechain=False)[0]
                 sampler.reset()
 
+                if verbose:
+                    print(self.name, 'burn-in complete, starting production')
+
                 # run production chain
                 sampler.run_mcmc(pos1, nsteps)
+
+                if verbose:
+                    print(self.name, 'training complete')
 
                 # set hyperparameters to max posterior point from chain
                 gp.kernel.pars = sampler.flatchain[
@@ -124,8 +134,8 @@ class MultiGP(object):
         self._pca = PCA(y, npc=npc)
 
         self._procs = tuple(
-            _GPProcess(x, y, kernel)
-            for y in self._pca.transform().T
+            _GPProcess(x, y, kernel, name='GP{}'.format(n))
+            for n, y in enumerate(self._pca.transform().T)
         )
         for p in self._procs:
             p.start()
@@ -162,7 +172,7 @@ class MultiGP(object):
 
         return x
 
-    def train(self, prior, nwalkers, nsteps):
+    def train(self, prior, nwalkers, nsteps, verbose=False):
         """
         Train the GPs, i.e. estimate the optimal hyperparameters via MCMC.
 
@@ -171,10 +181,12 @@ class MultiGP(object):
         nwalkers: number of MCMC walkers
         nsteps: number of MCMC steps per walker
             Both the burn-in and production chains will have nsteps.
+        verbose : boolean
+            Whether to output status info.
 
         """
         for p in self._procs:
-            p.send_cmd('train', prior, nwalkers, nsteps)
+            p.send_cmd('train', prior, nwalkers, nsteps, verbose=verbose)
         for p in self._procs:
             # wait for results
             p.get_result()
@@ -217,7 +229,7 @@ class MultiGP(object):
 
         return self._pca.inverse(z)
 
-    def calibrate(self, yexp, yerr, prior, nwalkers, nsteps):
+    def calibrate(self, yexp, yerr, prior, nwalkers, nsteps, verbose=False):
         """
         Calibrate GP input parameters to data.
 
@@ -230,6 +242,8 @@ class MultiGP(object):
         nwalkers: number of MCMC walkers
         nsteps: number of MCMC steps per walker
             Both the burn-in and production chains will have nsteps.
+        verbose : boolean
+            Whether to output status info.
 
         """
         zexp = self._pca.transform(np.atleast_2d(yexp))
@@ -248,12 +262,21 @@ class MultiGP(object):
         # sample random initial position from prior
         pos0 = prior.rvs(nwalkers)
 
+        if verbose:
+            print('starting calibration burn-in')
+
         # run burn-in chain
         pos1 = sampler.run_mcmc(pos0, nsteps, storechain=False)[0]
         sampler.reset()
 
+        if verbose:
+            print('burn-in complete, starting production')
+
         # run production chain
         sampler.run_mcmc(pos1, nsteps)
+
+        if verbose:
+            print('calibration complete')
 
         # delete ref. to log_post()
         sampler.lnprobfn = None

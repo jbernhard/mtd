@@ -94,7 +94,7 @@ def test_multigp():
 
     # test training by verifying the MCMC chain has the expected shape
     nwalkers, nsteps = 8, 5
-    mgp.train(prior, nwalkers, nsteps)
+    mgp.train(prior, nwalkers, nsteps, verbose=True)
 
     for i in range(nfeatures):
         chain = mgp.get_training_sampler_attr(i, 'chain')
@@ -111,7 +111,7 @@ def test_multigp():
     yerr = .1
     prior = priors.FlatPrior() * ndim
 
-    mgp.calibrate(yexp, yerr, prior, nwalkers, nsteps)
+    mgp.calibrate(yexp, yerr, prior, nwalkers, nsteps, verbose=True)
 
     flatchain = mgp.get_calibration_chain(flat=True)
     assert_equal(flatchain.shape, (nwalkers*nsteps, ndim),
