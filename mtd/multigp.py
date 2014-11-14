@@ -57,17 +57,20 @@ class _GPProcess(multiprocessing.Process):
                     print(self.name, 'starting training burn-in')
 
                 # run burn-in chain
-                pos1 = sampler.run_mcmc(pos0, nsteps, storechain=False)[0]
-                sampler.reset()
+                pos1 = sampler.run_mcmc(pos0, nsteps, storechain=verbose)[0]
 
                 if verbose:
-                    print(self.name, 'burn-in complete, starting production')
+                    print(self.name, 'burn-in complete')
+                    _print_sampler_stats(sampler)
+                    print(self.name, 'starting production')
 
                 # run production chain
+                sampler.reset()
                 sampler.run_mcmc(pos1, nsteps)
 
                 if verbose:
                     print(self.name, 'training complete')
+                    _print_sampler_stats(sampler)
 
                 # set hyperparameters to max posterior point from chain
                 gp.kernel.pars = sampler.flatchain[
@@ -266,17 +269,20 @@ class MultiGP(object):
             print('starting calibration burn-in')
 
         # run burn-in chain
-        pos1 = sampler.run_mcmc(pos0, nsteps, storechain=False)[0]
-        sampler.reset()
+        pos1 = sampler.run_mcmc(pos0, nsteps, storechain=verbose)[0]
 
         if verbose:
-            print('burn-in complete, starting production')
+            print('burn-in complete')
+            _print_sampler_stats(sampler)
+            print('starting production')
 
         # run production chain
+        sampler.reset()
         sampler.run_mcmc(pos1, nsteps)
 
         if verbose:
             print('calibration complete')
+            _print_sampler_stats(sampler)
 
         # delete ref. to log_post()
         sampler.lnprobfn = None
@@ -295,3 +301,17 @@ class MultiGP(object):
         chain = self._destandardize(chain)
 
         return chain
+
+
+def _print_sampler_stats(sampler, fmt_str='{:.3g}'):
+    """
+    Output MCMC sampler statistics.
+
+    """
+    afrac = sampler.acceptance_fraction
+    print('  acceptance fraction',
+          ' ± '.join(fmt_str.format(i) for i in (afrac.mean(), afrac.std())))
+    window = min(50, int(sampler.chain.shape[1]/2))
+    acor = sampler.get_autocorr_time(window)
+    print('  autocorrelation times',
+          ' '.join(fmt_str.format(i) for i in acor))
