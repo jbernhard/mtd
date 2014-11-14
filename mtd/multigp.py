@@ -37,8 +37,7 @@ class _GPProcess(multiprocessing.Process):
                 result = gp.predict(y, *args, **kwargs)
 
             elif cmd == 'train':
-                prior, nwalkers, nsteps = args
-                verbose = kwargs.pop('verbose', False)
+                prior, nwalkers, nsteps, nburnsteps, verbose = args
 
                 def log_post(pars):
                     log_prior = prior.logpdf(pars)
@@ -57,7 +56,9 @@ class _GPProcess(multiprocessing.Process):
                     print(self.name, 'starting training burn-in')
 
                 # run burn-in chain
-                pos1 = sampler.run_mcmc(pos0, nsteps, storechain=verbose)[0]
+                nburnsteps = nburnsteps or nsteps
+                pos1 = sampler.run_mcmc(pos0, nburnsteps,
+                                        storechain=verbose)[0]
 
                 if verbose:
                     print(self.name, 'burn-in complete')
@@ -175,21 +176,24 @@ class MultiGP(object):
 
         return x
 
-    def train(self, prior, nwalkers, nsteps, verbose=False):
+    def train(self, prior, nwalkers, nsteps, nburnsteps=None, verbose=False):
         """
         Train the GPs, i.e. estimate the optimal hyperparameters via MCMC.
 
         prior: Prior object
             Priors for the kernel hyperparameters.
         nwalkers: number of MCMC walkers
-        nsteps: number of MCMC steps per walker
-            Both the burn-in and production chains will have nsteps.
+        nsteps, nburnsteps: number of MCMC steps per walker
+            nsteps must be specified, nburnsteps is optional.  If only
+            nburnsteps is not given, both the burn-in and production chains
+            will have nsteps; if nburnsteps is given, the burn-in chain will
+            have nburnsteps and the production chain will have nsteps.
         verbose : boolean
             Whether to output status info.
 
         """
         for p in self._procs:
-            p.send_cmd('train', prior, nwalkers, nsteps, verbose=verbose)
+            p.send_cmd('train', prior, nwalkers, nsteps, nburnsteps, verbose)
         for p in self._procs:
             # wait for results
             p.get_result()
@@ -232,7 +236,9 @@ class MultiGP(object):
 
         return self._pca.inverse(z)
 
-    def calibrate(self, yexp, yerr, prior, nwalkers, nsteps, verbose=False):
+    def calibrate(self, yexp, yerr, prior,
+                  nwalkers, nsteps, nburnsteps=None,
+                  verbose=False):
         """
         Calibrate GP input parameters to data.
 
@@ -243,8 +249,11 @@ class MultiGP(object):
         prior: Prior object
             Priors for input parameters.
         nwalkers: number of MCMC walkers
-        nsteps: number of MCMC steps per walker
-            Both the burn-in and production chains will have nsteps.
+        nsteps, nburnsteps: number of MCMC steps per walker
+            nsteps must be specified, nburnsteps is optional.  If only
+            nburnsteps is not given, both the burn-in and production chains
+            will have nsteps; if nburnsteps is given, the burn-in chain will
+            have nburnsteps and the production chain will have nsteps.
         verbose : boolean
             Whether to output status info.
 
@@ -269,7 +278,8 @@ class MultiGP(object):
             print('starting calibration burn-in')
 
         # run burn-in chain
-        pos1 = sampler.run_mcmc(pos0, nsteps, storechain=verbose)[0]
+        nburnsteps = nburnsteps or nsteps
+        pos1 = sampler.run_mcmc(pos0, nburnsteps, storechain=verbose)[0]
 
         if verbose:
             print('burn-in complete')
