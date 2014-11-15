@@ -264,10 +264,10 @@ class MultiGP(object):
         def log_post(theta):
             log_prior = prior.logpdf(theta)
             if not np.isfinite(log_prior):
-                return -np.inf
+                return -np.inf, None
             zmodel = self._predict_pc(np.atleast_2d(theta))
             log_prob = -.5*np.sum(np.square(zmodel-zexp)/zerrsq)
-            return log_prior + log_prob
+            return log_prior + log_prob, zmodel
 
         sampler = emcee.EnsembleSampler(nwalkers, self._ndim, log_post)
 
@@ -313,6 +313,16 @@ class MultiGP(object):
         chain = self._destandardize(chain)
 
         return chain
+
+    def get_calibration_samples(self):
+        """
+        Retrieve the posterior calibration samples.
+
+        """
+        pc_samples = np.reshape(self._sampler.blobs, (-1, self._pca.npc))
+        samples = self._pca.inverse(pc_samples, copy=False)
+
+        return samples
 
 
 def _print_sampler_stats(sampler, fmt_str='{:.3g}'):

@@ -121,5 +121,9 @@ def test_multigp():
     assert_equal(chain.shape, (nwalkers, nsteps, ndim),
                  err_msg='Calibration chain has incorrect shape.')
 
+    samples = mgp.get_calibration_samples()
+    assert_equal(samples.shape, (nwalkers*nsteps, ndim),
+                 err_msg='Calibration samples have incorrect shape.')
+
     # wrong number of dimensions
     assert_raises(ValueError, mgp.predict, [[.5, .5, .5]])
