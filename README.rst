@@ -34,4 +34,5 @@ To do
 - Full Bayesian calibration (currently the kernel hyperparameters are fixed at the
   maximum a posteriori point for the calibration phase).
 - Discrepancy model.
+- Make multivariate Gaussian process class pickleable.
 - Performance optimizations.
