@@ -90,22 +90,19 @@ def test_multigp():
     )
 
     # can't get the chain before training
-    assert_raises(RuntimeError, mgp.get_training_sampler_attr, 0, 'chain')
+    assert_raises(RuntimeError, lambda: mgp.training_samplers)
 
     # test training by verifying the MCMC chain has the expected shape
     nwalkers, nsteps = 8, 5
     mgp.train(prior, nwalkers, nsteps, verbose=True)
 
     for i in range(nfeatures):
-        chain = mgp.get_training_sampler_attr(i, 'chain')
+        chain = mgp.training_samplers[i].chain
         assert_equal(
             chain.shape,
             (nwalkers, nsteps, len(prior)),
             err_msg='Training chain {} has incorrect shape.'.format(i)
         )
-
-    # bad attribute
-    assert_raises(AttributeError, mgp.get_training_sampler_attr, 0, 'hello')
 
     yexp = np.random.rand(nfeatures)
     yerr = .1

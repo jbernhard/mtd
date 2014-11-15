@@ -78,17 +78,13 @@ class _GPProcess(multiprocessing.Process):
                     sampler.lnprobability.argmax()
                 ]
 
-                result = None
+                # delete ref. to log_post()
+                sampler.lnprobfn = None
 
-            elif cmd == 'get_sampler_attr':
-                try:
-                    result = getattr(sampler, args[0])
-                except NameError:
-                    result = RuntimeError(
-                        'Training sampler has not been created yet.'
-                    )
-                except AttributeError as e:
-                    result = e
+                # return sampler and delete reference so memory will be cleared
+                # at next command
+                result = sampler
+                del sampler
 
             else:
                 result = ValueError('Unknown command: {}.'.format(cmd))
@@ -194,21 +190,18 @@ class MultiGP(object):
         """
         for p in self._procs:
             p.send_cmd('train', prior, nwalkers, nsteps, nburnsteps, verbose)
-        for p in self._procs:
-            # wait for results
-            p.get_result()
+        self._training_samplers = tuple(p.get_result() for p in self._procs)
 
-    def get_training_sampler_attr(self, n, attr):
+    @property
+    def training_samplers(self):
         """
-        Retrieve an attribute from a hyperparameter training sampler.
-
-        n : integer
-            Index of sampler to access.
-        attr : string
-            Attribute name.
+        A tuple of the training samplers for each GP.
 
         """
-        return self._procs[n].send_cmd('get_sampler_attr', attr).get_result()
+        try:
+            return self._training_samplers
+        except AttributeError:
+            raise RuntimeError('Training has not run yet.')
 
     def _predict_pc(self, t):
         """
