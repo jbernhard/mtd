@@ -290,29 +290,46 @@ class MultiGP(object):
         # delete ref. to log_post()
         sampler.lnprobfn = None
 
-        self._sampler = sampler
+        self._cal_sampler = sampler
 
-    def get_calibration_chain(self, flat=True):
+    @property
+    def cal_sampler(self):
         """
-        Retrieve the calibration MCMC chain.
-
-        flat : boolean, default True
-            Whether to return the chain flattened to shape
-            (nwalkers*nsteps, ndim) or with per-walker shape
-            (nwalkers, nsteps, ndim).
+        Calibration MCMC sampler object.  Note that cal_sampler.(flat)chain
+        should not be accessed directly; instead, use the MultiGP properties
+        cal_(flat)chain, which properly transform back to "normal" space.  Use
+        MultiGP.cal_samples to access the calibration samples.
 
         """
-        chain = self._sampler.flatchain if flat else self._sampler.chain
-        chain = self._destandardize(chain)
+        return self._cal_sampler
+
+    @property
+    def cal_chain(self):
+        """
+        Calibration MCMC chain, shape (nwalkers, nsteps, ndim).
+
+        """
+        chain = self._destandardize(self._cal_sampler.chain)
 
         return chain
 
-    def get_calibration_samples(self):
+    @property
+    def cal_flatchain(self):
         """
-        Retrieve the posterior calibration samples.
+        Flat calibration MCMC chain, shape (nwalkers*nsteps, ndim).
 
         """
-        pc_samples = np.reshape(self._sampler.blobs, (-1, self._pca.npc))
+        flatchain = self._destandardize(self._cal_sampler.flatchain)
+
+        return flatchain
+
+    @property
+    def cal_samples(self):
+        """
+        Posterior calibration samples, shape (nwalkers*nsteps, ndim).
+
+        """
+        pc_samples = np.reshape(self._cal_sampler.blobs, (-1, self._pca.npc))
         samples = self._pca.inverse(pc_samples, copy=False)
 
         return samples

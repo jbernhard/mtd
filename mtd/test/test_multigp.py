@@ -110,15 +110,17 @@ def test_multigp():
 
     mgp.calibrate(yexp, yerr, prior, nwalkers, nsteps, verbose=True)
 
-    flatchain = mgp.get_calibration_chain(flat=True)
+    assert mgp.cal_sampler is mgp._cal_sampler
+
+    flatchain = mgp.cal_flatchain
     assert_equal(flatchain.shape, (nwalkers*nsteps, ndim),
                  err_msg='Calibration flatchain has incorrect shape.')
 
-    chain = mgp.get_calibration_chain(flat=False)
+    chain = mgp.cal_chain
     assert_equal(chain.shape, (nwalkers, nsteps, ndim),
                  err_msg='Calibration chain has incorrect shape.')
 
-    samples = mgp.get_calibration_samples()
+    samples = mgp.cal_samples
     assert_equal(samples.shape, (nwalkers*nsteps, ndim),
                  err_msg='Calibration samples have incorrect shape.')
 
