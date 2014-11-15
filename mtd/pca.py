@@ -83,13 +83,15 @@ class PCA(object):
         """
         return self._svd[2]
 
-    def transform(self, y=None):
+    def transform(self, y=None, copy=True):
         """
         Transform a set of observations into PC space.
 
         y: (nobservations, nfeatures), optional
             If not provided, the original y used to construct the class is
             transformed.
+        copy : boolean, default True
+            Whether to copy y or modify in place.
 
         """
         # SVD:  y = U.S.Vt
@@ -103,7 +105,7 @@ class PCA(object):
             U = self._svd[0]
             return self._sqrt_nsamples * U[:, :self.npc]
 
-        y = atleast_2d_column(y, copy=True)
+        y = atleast_2d_column(y, copy=copy)
         y -= self._mean
 
         z = np.dot(y, self.pc[:self.npc].T)
@@ -111,14 +113,16 @@ class PCA(object):
 
         return z
 
-    def inverse(self, z):
+    def inverse(self, z, copy=True):
         """
         Transform principal components back to feature space.
 
         z: (nobservations, npc)
+        copy : boolean, default True
+            Whether to copy z or modify in place.
 
         """
-        z = atleast_2d_column(z, copy=True)
+        z = atleast_2d_column(z, copy=copy)
         z *= self.std[:self.npc]
 
         y = np.dot(z, self.pc[:self.npc])
