@@ -13,11 +13,12 @@ __all__ = 'PCA',
 # adapted from sklearn.decomposition.PCA
 class PCA(object):
     """
-    Principal component analysis.
+    Principal component analysis.  Transform a set of observations in feature
+    space to orthogonal principal components and back.
 
-    y: (nsamples, nfeatures)
-        Array of observations.
-    npc: optional, integer or float in (0, 1)
+    y : (nsamples, nfeatures)
+        Array of features.
+    npc : optional, integer or float in (0, 1)
         If an integer, explicitly sets the number of PC.  If a float in (0, 1),
         it sets the minimum explained variance fraction; the number of PC is
         automatically determined.  If not provided, all PC are used.
@@ -87,9 +88,9 @@ class PCA(object):
         """
         Transform a set of observations into PC space.
 
-        y: (nobservations, nfeatures), optional
-            If not provided, the original y used to construct the class is
-            transformed.
+        y : (nobservations, nfeatures), optional
+            Array of features to transform.  If not provided, the original y
+            used to construct the class is transformed.
         copy : boolean, default True
             Whether to copy y or modify in place.
 
@@ -117,7 +118,8 @@ class PCA(object):
         """
         Transform principal components back to feature space.
 
-        z: (nobservations, npc)
+        z : (nobservations, npc)
+            Array of principal components to inverse transform.
         copy : boolean, default True
             Whether to copy z or modify in place.
 

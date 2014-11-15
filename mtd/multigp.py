@@ -304,7 +304,9 @@ class MultiGP(object):
         Retrieve the calibration MCMC chain.
 
         flat : boolean, default True
-            Whether to return the normal or flat chain.
+            Whether to return the chain flattened to shape
+            (nwalkers*nsteps, ndim) or with per-walker shape
+            (nwalkers, nsteps, ndim).
 
         """
         chain = self._sampler.flatchain if flat else self._sampler.chain
