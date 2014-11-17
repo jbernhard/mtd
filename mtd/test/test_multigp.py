@@ -108,6 +108,10 @@ def test_multigp():
     yerr = .1
     prior = priors.FlatPrior() * ndim
 
+    # can't get the sampler before calibration
+    assert_raises(RuntimeError, lambda: mgp.cal_sampler)
+
+    # test calibration
     mgp.calibrate(yexp, yerr, prior, nwalkers, nsteps, verbose=True)
 
     assert mgp.cal_sampler is mgp._cal_sampler

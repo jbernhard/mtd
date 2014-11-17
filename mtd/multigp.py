@@ -301,7 +301,10 @@ class MultiGP(object):
         MultiGP.cal_samples to access the calibration samples.
 
         """
-        return self._cal_sampler
+        try:
+            return self._cal_sampler
+        except AttributeError:
+            raise RuntimeError('Calibration has not run yet.')
 
     @property
     def cal_chain(self):
@@ -309,7 +312,7 @@ class MultiGP(object):
         Calibration MCMC chain, shape (nwalkers, nsteps, ndim).
 
         """
-        chain = self._destandardize(self._cal_sampler.chain)
+        chain = self._destandardize(self.cal_sampler.chain)
 
         return chain
 
@@ -319,7 +322,7 @@ class MultiGP(object):
         Flat calibration MCMC chain, shape (nwalkers*nsteps, ndim).
 
         """
-        flatchain = self._destandardize(self._cal_sampler.flatchain)
+        flatchain = self._destandardize(self.cal_sampler.flatchain)
 
         return flatchain
 
@@ -329,7 +332,7 @@ class MultiGP(object):
         Posterior calibration samples, shape (nwalkers*nsteps, ndim).
 
         """
-        pc_samples = np.reshape(self._cal_sampler.blobs, (-1, self._pca.npc))
+        pc_samples = np.reshape(self.cal_sampler.blobs, (-1, self._pca.npc))
         samples = self._pca.inverse(pc_samples, copy=False)
 
         return samples
