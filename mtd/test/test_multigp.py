@@ -84,6 +84,14 @@ def test_multigp():
     assert_equal(mgp._destandardize(np.ones(ndim)), xmax,
                  err_msg='One must destandardize to x maximum.')
 
+    pc1 = mgp._predict_pc(x)
+    pc2 = np.empty((nsamples, nfeatures))
+    mgp._predict_pc(x, out=pc2)
+    assert_array_equal(
+        pc1, pc2,
+        err_msg='In-place PC prediction gives inconsistent results.'
+    )
+
     assert_allclose(
         y, mgp.predict(x),
         err_msg='MultiGP does not predict noise-free training points exactly.'

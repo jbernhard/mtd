@@ -203,19 +203,24 @@ class MultiGP(object):
         except AttributeError:
             raise RuntimeError('Training has not run yet.')
 
-    def _predict_pc(self, t):
+    def _predict_pc(self, t, out=None):
         """
         Predict principal components at test points.
 
         t : (ntest, ndim)
             Test points.  Must already be standardized.
+        out : (ntest, npc), optional
+            Array to write results into.
 
         """
         for p in self._procs:
             p.send_cmd('predict', t, mean_only=True)
-        z = np.column_stack([p.get_result() for p in self._procs])
 
-        return z
+        if out is None:
+            out = np.empty((t.shape[0], len(self)))
+        out.T[:] = [p.get_result() for p in self._procs]
+
+        return out
 
     def predict(self, t):
         """
