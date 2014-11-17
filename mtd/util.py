@@ -22,7 +22,7 @@ def atleast_2d_column(arr, dtype=float, copy=False):
     """
     arr = np.array(arr, dtype=dtype, copy=copy)
 
-    if arr.ndim == 1:
+    if arr.ndim <= 1:
         arr = arr.reshape(-1, 1)
 
     return arr

@@ -10,6 +10,10 @@ from ..util import atleast_2d_column
 def test_util():
     """utility functions"""
 
+    zero_d = atleast_2d_column(0)
+    assert zero_d.shape == (1, 1), \
+        'Zero-dimensional input must cast to 2D.'
+
     n = 10
     x = np.linspace(0, 1, 10)
 
