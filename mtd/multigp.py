@@ -333,7 +333,7 @@ class MultiGP(object):
 
         """
         pc_samples = np.reshape(self.cal_sampler.blobs, (-1, self._pca.npc))
-        samples = self._pca.inverse(pc_samples, copy=False)
+        samples = self._pca.inverse(pc_samples)
 
         return samples
 

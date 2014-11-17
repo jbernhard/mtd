@@ -3,6 +3,7 @@
 from __future__ import division
 
 import numpy as np
+from nose.tools import assert_raises
 
 from .. import PCA
 
@@ -43,6 +44,14 @@ def test_pca():
     var = z1.var(axis=0)
     assert np.allclose(var, 1), \
         'Transformed y must have unit variance.\n{} != 0'.format(var)
+
+    mu, cov = pca.inverse(0, var=1)
+    assert np.allclose(mu, y.mean(axis=0)), \
+        'Inverse transform of zero must equal sample mean.'
+    assert np.allclose(cov, y.var(axis=0)), \
+        'Inverse transform of unit variance must equal sample variance.'
+
+    assert_raises(ValueError, pca.inverse, [0, 1], 0)
 
     # random data
     nsamples, nfeatures = 5, 3
@@ -93,6 +102,13 @@ def test_pca():
     assert np.allclose(norm, 1), \
         'PC must be unit vectors.\n{} != 0'.format(norm)
 
+    mu, cov = pca.inverse(np.zeros((1, nfeatures)),
+                          var=np.ones((1, nfeatures)), y_cov=False)
+    assert np.allclose(mu, y.mean(axis=0)), \
+        'Inverse transform of zero must equal sample mean.'
+    assert np.allclose(cov, y.var(axis=0)), \
+        'Inverse transform of unit variance must equal sample variance.'
+
     # minimum explained variance
     npc = nfeatures - 1
     var = .99*pca.weights.cumsum()[npc - 1]
@@ -108,3 +124,21 @@ def test_pca():
         'Transformed y has wrong shape.\n{} != {}'.format(z1.shape, shape)
     assert np.allclose(z1, z2), \
         'Transformations are inconsistent.\n{} != {}'.format(z1, z2)
+
+    z = np.array([[.1, .2], [-1., 1.5]])
+    zvar = np.array([[.05, .04], [.8, .9]])
+    ycov = pca.inverse(z, var=zvar, y_cov=True)[1]
+    yvar = pca.inverse(z, var=zvar, y_cov=False)[1]
+
+    shape = (2, nfeatures, nfeatures)
+    assert ycov.shape == shape, \
+        'Inverse transformed covariance has incorrect shape.\n' \
+        '{} != {}'.format(ycov.shape, shape)
+    shape = (2, nfeatures)
+    assert yvar.shape == shape, \
+        'Inverse transformed variance has incorrect shape.\n' \
+        '{} != {}'.format(yvar.shape, shape)
+    ycovdiag = np.diagonal(ycov, axis1=1, axis2=2)
+    assert np.all(ycovdiag == yvar), \
+        'Diagonal of covariance matrix does not agree with variance.\n' \
+        '{} != {}'.format(ycovdiag, yvar)

@@ -114,20 +114,51 @@ class PCA(object):
 
         return z
 
-    def inverse(self, z, copy=True):
+    def inverse(self, z, var=None, y_cov=True):
         """
         Transform principal components back to feature space.
 
         z : (nobservations, npc)
             Array of principal components to inverse transform.
-        copy : boolean, default True
-            Whether to copy z or modify in place.
+        var : (nobservations, npc), optional
+            Variance of z.  PCs are assumed to be uncorrelated, so each row of
+            var represents the diagonal of the covariance matrix for the
+            corresponding row of z.  If given, both the inverse-transform y and
+            its covariance matrices are returned.
+        y_cov : boolean, default True
+            Whether to calculate the full covariance matrices of y or
+            only the diagonals.  If true, an array
+            (nobservations, nfeatures, nfeatures) is returned, otherwise
+            (nobservations, nfeatures).  No effect if var is not given.
+            Note that the covariance between rows of y is never calculated,
+            this only refers to covariance between components of rows.
 
         """
-        z = atleast_2d_column(z, copy=copy)
-        z *= self.std[:self.npc]
+        z = atleast_2d_column(z, copy=False)
 
-        y = np.dot(z, self.pc[:self.npc])
+        if var is not None:
+            var = atleast_2d_column(var, copy=False)
+            if z.shape != var.shape:
+                raise ValueError('z and var must have the same shape.')
+
+        # transformation matrix
+        A = self.pc[:self.npc] * self.std[:self.npc, np.newaxis]
+
+        y = np.dot(z, A)
         y += self._mean
 
-        return y
+        if var is not None:
+            # cov = A^t.diag(row).A for each row in var
+            # np.einsum() does this efficiently and easily
+            if y_cov:
+                # full covariance matrix
+                # cov_aij = sum_k(A_ki var_ak A_kj)
+                subscripts = 'ki,ak,kj'
+            else:
+                # diagonals only
+                # cov_aii = sum_k(A_ki var_ak A_ki)
+                subscripts = 'ki,ak,ki->ai'
+            cov = np.einsum(subscripts, A, var, A)
+            return y, cov
+        else:
+            return y
