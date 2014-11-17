@@ -263,7 +263,7 @@ class MultiGP(object):
             log_prior = prior.logpdf(theta)
             if not np.isfinite(log_prior):
                 return -np.inf, None
-            zmodel = self._predict_pc(np.atleast_2d(theta))
+            zmodel = self._predict_pc(theta[np.newaxis, :])
             log_prob = -.5*np.sum(np.square(zmodel-zexp)/zerrsq)
             return log_prior + log_prob, zmodel
 
