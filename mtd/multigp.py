@@ -257,9 +257,9 @@ class MultiGP(object):
         else:
             return self._pca.inverse(z[0], var=z[1], y_cov=False)
 
-    def calibrate(self, yexp, yerr, prior,
+    def calibrate(self, yexp, yerr,
                   nwalkers, nsteps, nburnsteps=None,
-                  verbose=False):
+                  prior=None, verbose=False):
         """
         Calibrate GP input parameters to data.
 
@@ -267,14 +267,16 @@ class MultiGP(object):
             Experimental/calibration data.
         yerr: float
             Fractional error on experimental data.
-        prior: Prior object
-            Priors for input parameters.
         nwalkers: number of MCMC walkers
         nsteps, nburnsteps: number of MCMC steps per walker
             nsteps must be specified, nburnsteps is optional.  If only
             nburnsteps is not given, both the burn-in and production chains
             will have nsteps; if nburnsteps is given, the burn-in chain will
             have nburnsteps and the production chain will have nsteps.
+        prior: Prior object, optional
+            Priors for input parameters.  If not given, a flat prior is placed
+            on each parameter (and this is faster than explicitly providing a
+            FlatPrior).
         verbose : boolean
             Whether to output status info.
 
@@ -282,18 +284,32 @@ class MultiGP(object):
         zexp = self._pca.transform(np.atleast_2d(yexp))
         zerrsq = np.square(yerr*zexp)
 
-        def log_post(theta):
-            log_prior = prior.logpdf(theta)
-            if not np.isfinite(log_prior):
-                return -np.inf, None
+        def log_likelihood(theta):
             zmodel = self._predict_pc(theta[np.newaxis, :])
             log_prob = -.5*np.sum(np.square(zmodel-zexp)/zerrsq)
-            return log_prior + log_prob, zmodel
+            return log_prob, zmodel
+
+        if prior is None:
+            pos0 = np.random.rand(nwalkers, self._ndim)
+
+            def log_post(theta):
+                if np.any((theta < 0.) | (theta > 1.)):
+                    return -np.inf, None
+                else:
+                    return log_likelihood(theta)
+
+        else:
+            pos0 = prior.rvs(nwalkers)
+
+            def log_post(theta):
+                log_prior = prior.logpdf(theta)
+                if not np.isfinite(log_prior):
+                    return -np.inf, None
+                else:
+                    log_prob, zmodel = log_likelihood(theta)
+                    return log_prior + log_prob, zmodel
 
         sampler = emcee.EnsembleSampler(nwalkers, self._ndim, log_post)
-
-        # sample random initial position from prior
-        pos0 = prior.rvs(nwalkers)
 
         if verbose:
             print('starting calibration burn-in')
