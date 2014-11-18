@@ -34,6 +34,7 @@ def test_gp_process():
     proc.send_cmd('predict', t)
     mu, cov = proc.get_result()
     mu_, cov_ = gp.predict(y, t)
+    cov_ = cov_.diagonal()
 
     assert_array_equal(mu, mu_, err_msg=err_msg)
     assert_array_equal(cov, cov_, err_msg=err_msg)
@@ -92,10 +93,24 @@ def test_multigp():
         err_msg='In-place PC prediction gives inconsistent results.'
     )
 
+    mean = mgp.predict(x)
     assert_allclose(
-        y, mgp.predict(x),
+        y, mean,
         err_msg='MultiGP does not predict noise-free training points exactly.'
     )
+
+    mean2, var = mgp.predict(x, mean_only=False)
+    assert_array_equal(mean2, mean, err_msg='Means are inconsistent.')
+    assert_allclose(
+        var, 0, atol=1e-15,
+        err_msg='MultiGP variance must vanish at noise-free training points.'
+    )
+    assert mean.shape == var.shape == (nsamples, nfeatures), \
+        'Mean and variance arrays must have same shape.'
+
+    mean, var = mgp.predict(np.random.rand(3, ndim), mean_only=False)
+    assert np.all(var > 1e-10), \
+        'Variance must be nonzero away from training points.\n{}'.format(var)
 
     # can't get the chain before training
     assert_raises(RuntimeError, lambda: mgp.training_samplers)

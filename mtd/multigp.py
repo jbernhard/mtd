@@ -35,6 +35,9 @@ class _GPProcess(multiprocessing.Process):
         for cmd, args, kwargs in iter(pipe.recv, None):
             if cmd == 'predict':
                 result = gp.predict(y, *args, **kwargs)
+                if len(result) == 2:
+                    # only return the diagonal of the covariance matrix
+                    result = result[0], result[1].diagonal()
 
             elif cmd == 'train':
                 prior, nwalkers, nsteps, nburnsteps, verbose = args
@@ -203,36 +206,54 @@ class MultiGP(object):
         except AttributeError:
             raise RuntimeError('Training has not run yet.')
 
-    def _predict_pc(self, t, out=None):
+    def _predict_pc(self, t, mean_only=True, out=None):
         """
         Predict principal components at test points.
 
         t : (ntest, ndim)
             Test points.  Must already be standardized.
+        mean_only : boolean, default True
+            Whether to predict the GP mean only or also the variance.
         out : (ntest, npc), optional
-            Array to write results into.
+            Array to write mean results into.
 
         """
         for p in self._procs:
-            p.send_cmd('predict', t, mean_only=True)
+            p.send_cmd('predict', t, mean_only=mean_only)
+
+        results = [p.get_result() for p in self._procs]
 
         if out is None:
             out = np.empty((t.shape[0], len(self)))
-        out.T[:] = [p.get_result() for p in self._procs]
 
-        return out
+        if mean_only:
+            # results contains only the mean
+            out.T[:] = results
+            return out
+        else:
+            # results contains (mean, var) tuples -- unpack with zip
+            out_var = np.empty_like(out)
+            out.T[:], out_var.T[:] = zip(*results)
+            return out, out_var
 
-    def predict(self, t):
+    def predict(self, t, mean_only=True):
         """
         Calculate predictions at test points.
 
         t : (ntest, ndim)
+        mean_only : boolean, default True
+            Whether to predict the GP mean only or also the variance.  The
+            covariance is *not* computed between the test points t, only the
+            variance of each output.
 
         """
         t = self._standardize(atleast_2d_column(t))
-        z = self._predict_pc(t)
+        z = self._predict_pc(t, mean_only=mean_only)
 
-        return self._pca.inverse(z)
+        if mean_only:
+            return self._pca.inverse(z)
+        else:
+            return self._pca.inverse(z[0], var=z[1], y_cov=False)
 
     def calibrate(self, yexp, yerr, prior,
                   nwalkers, nsteps, nburnsteps=None,
