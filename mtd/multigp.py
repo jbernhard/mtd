@@ -3,6 +3,7 @@
 from __future__ import division
 
 import multiprocessing
+import pickle
 
 import numpy as np
 import emcee
@@ -100,6 +101,10 @@ class _GPProcess(multiprocessing.Process):
         self._in_pipe.send((cmd, args, kwargs))
         return self
 
+    def send_bytes(self, buffer):
+        self._in_pipe.send_bytes(buffer)
+        return self
+
     def stop(self):
         self._in_pipe.send(None)
 
@@ -177,6 +182,18 @@ class MultiGP(object):
 
         return x
 
+    def _send_cmd_all_procs(self, cmd, *args, **kwargs):
+        """
+        Send the same command to each subprocess and retrieve results.
+
+        """
+        buffer = pickle.dumps((cmd, args, kwargs))
+
+        for p in self._procs:
+            p.send_bytes(buffer)
+
+        return tuple(p.get_result() for p in self._procs)
+
     def train(self, prior, nwalkers, nsteps, nburnsteps=None, verbose=False):
         """
         Train the GPs, i.e. estimate the optimal hyperparameters via MCMC.
@@ -193,9 +210,9 @@ class MultiGP(object):
             Whether to output status info.
 
         """
-        for p in self._procs:
-            p.send_cmd('train', prior, nwalkers, nsteps, nburnsteps, verbose)
-        self._training_samplers = tuple(p.get_result() for p in self._procs)
+        self._training_samplers = self._send_cmd_all_procs(
+            'train', prior, nwalkers, nsteps, nburnsteps, verbose
+        )
 
     @property
     def training_samplers(self):
@@ -220,10 +237,7 @@ class MultiGP(object):
             Array to write mean results into.
 
         """
-        for p in self._procs:
-            p.send_cmd('predict', t, mean_only=mean_only)
-
-        results = [p.get_result() for p in self._procs]
+        results = self._send_cmd_all_procs('predict', t, mean_only=mean_only)
 
         if out is None:
             out = np.empty((t.shape[0], len(self)))
