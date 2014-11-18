@@ -43,6 +43,8 @@ class _GPProcess(multiprocessing.Process):
                 prior, nwalkers, nsteps, nburnsteps, verbose = args
 
                 def log_post(pars):
+                    if np.any(pars < 0.):
+                        return -np.inf
                     log_prior = prior.logpdf(pars)
                     if not np.isfinite(log_prior):
                         return -np.inf
