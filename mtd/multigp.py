@@ -40,6 +40,13 @@ class _GPProcess(multiprocessing.Process):
                     # only return the diagonal of the covariance matrix
                     result = result[0], result[1].diagonal()
 
+            elif cmd == 'get_kernel_pars':
+                result = gp.kernel.pars
+
+            elif cmd == 'set_kernel_pars':
+                gp.kernel.pars = args[0]
+                result = None
+
             elif cmd == 'train':
                 prior, nwalkers, nsteps, nburnsteps, verbose = args
 
@@ -193,6 +200,20 @@ class MultiGP(object):
             p.send_bytes(buffer)
 
         return tuple(p.get_result() for p in self._procs)
+
+    def get_kernel_pars(self, n):
+        """
+        Retrieve the kernel hyperparameters for the nth GP.
+
+        """
+        return self._procs[n].send_cmd('get_kernel_pars').get_result()
+
+    def set_kernel_pars(self, n, pars):
+        """
+        Set the kernel hyperparameters for the nth GP.
+
+        """
+        self._procs[n].send_cmd('set_kernel_pars', pars).get_result()
 
     def train(self, prior, nwalkers, nsteps, nburnsteps=None, verbose=False):
         """

@@ -85,6 +85,17 @@ def test_multigp():
     assert_equal(mgp._destandardize(np.ones(ndim)), xmax,
                  err_msg='One must destandardize to x maximum.')
 
+    # get/set kernel hyperparameters
+    for n in range(len(mgp)):
+        assert_array_equal(mgp.get_kernel_pars(n), kernel.pars,
+                           err_msg='Incorrect retrieved hyperparameters.')
+
+    new_pars = kernel.pars * 1.1
+    for n in range(len(mgp)):
+        mgp.set_kernel_pars(n, new_pars)
+        assert_array_equal(mgp.get_kernel_pars(n), new_pars,
+                           err_msg='Incorrect manually set hyperparameters.')
+
     pc1 = mgp._predict_pc(x)
     pc2 = np.empty((nsamples, nfeatures))
     mgp._predict_pc(x, out=pc2)
