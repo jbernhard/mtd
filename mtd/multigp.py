@@ -6,6 +6,7 @@ import multiprocessing
 import pickle
 
 import numpy as np
+from scipy import optimize
 import emcee
 from george import GP
 
@@ -82,14 +83,23 @@ class _GPProcess(multiprocessing.Process):
                 sampler.reset()
                 sampler.run_mcmc(pos1, nsteps)
 
+                max_post = sampler.flatlnprobability.max()
+                max_post_pars = sampler.flatchain[
+                    sampler.flatlnprobability.argmax()]
+                res = optimize.minimize(
+                    lambda x: -log_post(x), max_post_pars, method='Nelder-Mead'
+                )
+
+                # set hyperparameters to map point
+                gp.kernel.pars = res.x
+
                 if verbose:
                     print(self.name, 'training complete')
                     _print_sampler_stats(sampler)
-
-                # set hyperparameters to max posterior point from chain
-                gp.kernel.pars = sampler.flatchain[
-                    sampler.lnprobability.argmax()
-                ]
+                    print('  best MCMC point    ',
+                          _format_number_list(max_post, *max_post_pars))
+                    print('  after nonlinear opt',
+                          _format_number_list(-res.fun, *res.x))
 
                 # delete ref. to log_post()
                 sampler.lnprobfn = None
@@ -417,15 +427,22 @@ class MultiGP(object):
         return samples
 
 
-def _print_sampler_stats(sampler, fmt_str='{:.3g}'):
+def _format_number_list(*args, fmt='{:.3g}', sep=' '):
+    """
+    Format a list of numbers into a nice string.
+
+    """
+    return sep.join(fmt.format(i) for i in args)
+
+
+def _print_sampler_stats(sampler):
     """
     Output MCMC sampler statistics.
 
     """
     afrac = sampler.acceptance_fraction
     print('  acceptance fraction',
-          ' ± '.join(fmt_str.format(i) for i in (afrac.mean(), afrac.std())))
+          _format_number_list(afrac.mean(), afrac.std(), sep=' ± '))
     window = min(50, int(sampler.chain.shape[1]/2))
     acor = sampler.get_autocorr_time(window)
-    print('  autocorrelation times',
-          ' '.join(fmt_str.format(i) for i in acor))
+    print('  autocorrelation times', _format_number_list(*acor))
