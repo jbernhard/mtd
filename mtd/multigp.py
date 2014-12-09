@@ -428,11 +428,14 @@ class MultiGP(object):
         return samples
 
 
-def _format_number_list(*args, fmt='{:.3g}', sep=' '):
+def _format_number_list(*args, **kwargs):
     """
     Format a list of numbers into a nice string.
 
     """
+    fmt = kwargs.pop('fmt', '{:.3g}')
+    sep = kwargs.pop('sep', ' ')
+
     return sep.join(fmt.format(i) for i in args)
 
 
