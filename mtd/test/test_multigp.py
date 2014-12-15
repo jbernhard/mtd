@@ -7,7 +7,7 @@ from numpy.testing import assert_array_equal, assert_equal, assert_allclose
 from nose.tools import assert_raises
 import george
 
-from .. import MultiGP, kernels, priors
+from .. import MultiGP, PCA, kernels, priors
 from ..multigp import _GPProcess
 
 
@@ -72,6 +72,9 @@ def test_multigp():
 
     assert len(mgp) == nfeatures, \
         'MultiGP has incorrect length (number of individual GPs).'
+
+    assert isinstance(mgp.pca, PCA), \
+        'MultiGP.pca property does not return a PCA object.'
 
     # test [de]standardization
     xmin = x.min(axis=0)

@@ -178,6 +178,14 @@ class MultiGP(object):
         except AttributeError:
             pass
 
+    @property
+    def pca(self):
+        """
+        The underlying PCA object.
+
+        """
+        return self._pca
+
     def _standardize(self, x):
         """
         Scale x to the unit hypercube [0, 1]^ndim.
