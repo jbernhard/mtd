@@ -6,7 +6,6 @@ import multiprocessing
 import pickle
 
 import numpy as np
-from scipy import optimize
 import emcee
 from george import GP
 
@@ -84,23 +83,15 @@ class _GPProcess(multiprocessing.Process):
                 sampler.a = 4.   # decrease effective temperature
                 sampler.run_mcmc(pos1, nsteps)
 
-                max_post = sampler.flatlnprobability.max()
-                max_post_pars = sampler.flatchain[
-                    sampler.flatlnprobability.argmax()]
-                res = optimize.minimize(
-                    lambda x: -log_post(x), max_post_pars, method='Nelder-Mead'
-                )
-
-                # set hyperparameters to map point
-                gp.kernel.pars = res.x
+                # set hyperparameters to median
+                median = np.median(sampler.flatchain, axis=0)
+                gp.kernel.pars = median
 
                 if verbose:
                     print(self.name, 'training complete')
                     _print_sampler_stats(sampler)
-                    print('  best MCMC point    ',
-                          _format_number_list(max_post, *max_post_pars))
-                    print('  after nonlinear opt',
-                          _format_number_list(-res.fun, *res.x))
+                    print('  median',
+                          _format_number_list(log_post(median), *median))
 
                 # delete ref. to log_post()
                 sampler.lnprobfn = None
