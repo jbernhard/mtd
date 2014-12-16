@@ -337,10 +337,11 @@ class MultiGP(object):
         """
         zexp = self._pca.transform(np.atleast_2d(yexp))
         zerrsq = np.square(yerr*zexp)
+        zweights = -.5 * self._pca.var[:self._pca.npc] / zerrsq
 
         def log_likelihood(theta):
             zmodel = self._predict_pc(theta[np.newaxis, :])
-            log_prob = -.5*np.sum(np.square(zmodel-zexp)/zerrsq)
+            log_prob = np.inner(np.square(zmodel-zexp), zweights)
             return log_prob, zmodel
 
         if prior is None:
