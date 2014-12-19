@@ -80,7 +80,6 @@ class _GPProcess(multiprocessing.Process):
 
                 # run production chain
                 sampler.reset()
-                sampler.a = 4.   # decrease effective temperature
                 sampler.run_mcmc(pos1, nsteps)
 
                 # set hyperparameters to median
