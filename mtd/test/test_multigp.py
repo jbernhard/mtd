@@ -59,9 +59,9 @@ def test_multigp():
         kernels.WhiteKernel(1e-8, ndim=ndim)
     )
     prior = (
-        priors.VariancePrior() +
-        priors.LengthScalePrior()*ndim +
-        priors.NoisePrior()
+        priors.InvGammaPrior() +
+        priors.BetaPrior()*ndim +
+        priors.LogPrior()
     )
 
     # dimension mismatch
@@ -143,7 +143,7 @@ def test_multigp():
 
     yexp = np.random.rand(nfeatures)
     yerr = .1
-    prior = priors.FlatPrior() * ndim
+    prior = priors.UniformPrior() * ndim
 
     # can't get the sampler before calibration
     assert_raises(RuntimeError, lambda: mgp.cal_sampler)

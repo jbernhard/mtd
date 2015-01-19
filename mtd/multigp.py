@@ -320,7 +320,7 @@ class MultiGP(object):
         prior: Prior object, optional
             Priors for input parameters.  If not given, a flat prior is placed
             on each parameter (and this is faster than explicitly providing a
-            FlatPrior).
+            UniformPrior).
         verbose : boolean
             Whether to output status info.
 

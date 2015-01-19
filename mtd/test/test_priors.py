@@ -29,10 +29,10 @@ def test_priors():
         p = getattr(priors, name)()
         sample = p.rvs(10)
         a, b = {
-            'FlatPrior': (0, 1),
-            'VariancePrior': (0, np.inf),
-            'LengthScalePrior': (0, 1),
-            'NoisePrior': (0, np.inf),
+            'UniformPrior': (0, 1),
+            'InvGammaPrior': (0, np.inf),
+            'BetaPrior': (0, 1),
+            'LogPrior': (0, np.inf),
         }[name]
 
         assert np.all((sample >= a) & (sample <= b)), \
@@ -44,9 +44,9 @@ def test_priors():
         _check_pickle(p, name)
 
     # Test combining priors.
-    var = priors.VariancePrior()
-    length = priors.LengthScalePrior()
-    noise = priors.NoisePrior()
+    var = priors.InvGammaPrior()
+    length = priors.BetaPrior()
+    noise = priors.LogPrior()
 
     # build up a compound prior in a funny way to test all operations
     prior = var
