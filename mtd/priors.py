@@ -5,7 +5,8 @@ from __future__ import division
 import numpy as np
 from scipy.stats import distributions
 
-__all__ = ('Prior', 'UniformPrior', 'InvGammaPrior', 'BetaPrior', 'LogPrior')
+__all__ = ('Prior', 'UniformPrior', 'ExpPrior', 'InvGammaPrior', 'BetaPrior',
+           'LogPrior')
 
 
 class Prior(object):
@@ -81,6 +82,16 @@ def UniformPrior(low=0., high=1.):
 
     """
     return Prior(distributions.uniform(loc=low, scale=(high-low)))
+
+
+def ExpPrior(rate=1.):
+    """
+    Exponential prior.
+
+    rate : exponential rate parameter (inverse scale)
+
+    """
+    return Prior(distributions.expon(scale=1./rate))
 
 
 def InvGammaPrior(a=5., b=5.):

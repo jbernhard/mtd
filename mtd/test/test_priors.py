@@ -30,6 +30,7 @@ def test_priors():
         sample = p.rvs(10)
         a, b = {
             'UniformPrior': (0, 1),
+            'ExpPrior': (0, np.inf),
             'InvGammaPrior': (0, np.inf),
             'BetaPrior': (0, 1),
             'LogPrior': (0, np.inf),
