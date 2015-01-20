@@ -19,6 +19,7 @@ class Prior(object):
     """
     def __init__(self, *dists):
         self._dists = list(dists)
+        self._update()
 
     def __len__(self):
         return len(self._dists)
@@ -40,11 +41,20 @@ class Prior(object):
 
     def __iadd__(self, other):
         self._dists += other._dists
+        self._update()
         return self
 
     def __imul__(self, other):
         self._dists *= other
+        self._update()
         return self
+
+    def _update(self):
+        """
+        Cache prior ranges.
+
+        """
+        self._min, self._max = np.array([d.interval(1.) for d in self]).T
 
     def rvs(self, size=1):
         """
@@ -64,6 +74,8 @@ class Prior(object):
         if len(self) == 1:
             return self[0].logpdf(x)
         else:
+            if np.any((x < self._min) | (x > self._max)):
+                return -np.inf
             return sum(dist.logpdf(i) for dist, i in zip(self, x))
 
     def __getstate__(self):
@@ -72,6 +84,7 @@ class Prior(object):
     def __setstate__(self, state):
         self._dists = [getattr(distributions, name)(*args, **kwds)
                        for name, args, kwds in state]
+        self._update()
 
 
 def UniformPrior(low=0., high=1.):

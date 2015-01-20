@@ -51,8 +51,6 @@ class _GPProcess(multiprocessing.Process):
                 prior, nwalkers, nsteps, nburnsteps, verbose = args
 
                 def log_post(pars):
-                    if np.any(pars < 0.):
-                        return -np.inf
                     log_prior = prior.logpdf(pars)
                     if not np.isfinite(log_prior):
                         return -np.inf
@@ -318,9 +316,8 @@ class MultiGP(object):
             will have nsteps; if nburnsteps is given, the burn-in chain will
             have nburnsteps and the production chain will have nsteps.
         prior: Prior object, optional
-            Priors for input parameters.  If not given, a flat prior is placed
-            on each parameter (and this is faster than explicitly providing a
-            UniformPrior).
+            Priors for input parameters.  If not given, a uniform prior is
+            placed on each parameter.
         verbose : boolean
             Whether to output status info.
 
