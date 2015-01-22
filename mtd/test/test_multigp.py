@@ -126,20 +126,19 @@ def test_multigp():
     assert np.all(var > 1e-10), \
         'Variance must be nonzero away from training points.\n{}'.format(var)
 
-    # can't get the chain before training
-    assert_raises(RuntimeError, lambda: mgp.training_samplers)
+    # can't get results before training
+    assert_raises(RuntimeError, lambda: mgp.training_results)
 
-    # test training by verifying the MCMC chain has the expected shape
-    nwalkers, nsteps = 8, 5
-    mgp.train(prior, nwalkers, nsteps, verbose=True)
+    # test training
+    nstarts = 3
+    mgp.train(prior, nstarts, verbose=True)
+    res = mgp.training_results
+    assert len(res) == len(mgp), \
+        'Incorrect number of results lists.'
 
-    for i in range(nfeatures):
-        chain = mgp.training_samplers[i].chain
-        assert_equal(
-            chain.shape,
-            (nwalkers, nsteps, len(prior)),
-            err_msg='Training chain {} has incorrect shape.'.format(i)
-        )
+    for r in res:
+        assert len(r) == nstarts, \
+            'Incorrect number of training results.'
 
     yexp = np.random.rand(nfeatures)
     yerr = .1
@@ -149,6 +148,7 @@ def test_multigp():
     assert_raises(RuntimeError, lambda: mgp.cal_sampler)
 
     # test calibration
+    nwalkers, nsteps = 8, 5
     mgp.calibrate(yexp, yerr, nwalkers, nsteps, verbose=True)
     mgp.calibrate(yexp, yerr, nwalkers, nsteps, prior=prior, verbose=True)
 

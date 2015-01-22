@@ -2,10 +2,12 @@
 
 from __future__ import division
 
+import itertools
 import multiprocessing
 import pickle
 
 import numpy as np
+from scipy import optimize
 import emcee
 from george import GP
 
@@ -48,55 +50,46 @@ class _GPProcess(multiprocessing.Process):
                 result = None
 
             elif cmd == 'train':
-                prior, nwalkers, nsteps, nburnsteps, verbose = args
+                prior, nstarts, verbose = args
 
-                def log_post(pars):
-                    log_prior = prior.logpdf(pars)
-                    if not np.isfinite(log_prior):
-                        return -np.inf
-                    gp.kernel.pars = pars
-                    return log_prior + gp.lnlikelihood(y, quiet=True)
-
-                ndim = len(gp.kernel)
-                sampler = emcee.EnsembleSampler(nwalkers, ndim, log_post)
-
-                # sample random initial position from prior
-                pos0 = prior.rvs(nwalkers)
-
-                if verbose:
-                    print(self.name, 'starting training burn-in')
-
-                # run burn-in chain
-                nburnsteps = nburnsteps or nsteps
-                pos1 = sampler.run_mcmc(pos0, nburnsteps,
-                                        storechain=verbose)[0]
+                # define function for negative log-likelihood and its gradient
+                def nll(vector, bad_return=(1e30, np.zeros(len(gp.kernel)))):
+                    # prevent exp overflow
+                    if np.any(vector > 100.):
+                        return bad_return
+                    gp.kernel.vector = vector
+                    ll = gp.lnlikelihood(y, quiet=True)
+                    if not np.isfinite(ll):
+                        return bad_return
+                    grad = gp.grad_lnlikelihood(y, quiet=True)
+                    return -ll, -grad
 
                 if verbose:
-                    print(self.name, 'burn-in complete')
-                    _print_sampler_stats(sampler)
-                    print(self.name, 'starting production')
+                    print(self.name, 'starting training')
 
-                # run production chain
-                sampler.reset()
-                sampler.run_mcmc(pos1, nsteps)
-
-                # set hyperparameters to median
-                median = np.median(sampler.flatchain, axis=0)
-                gp.kernel.pars = median
+                # sample random initial positions from prior
+                # run optimization for each
+                result = tuple(
+                    optimize.minimize(nll, x0, jac=True, **kwargs)
+                    for x0 in np.log(prior.rvs(nstarts))
+                )
 
                 if verbose:
                     print(self.name, 'training complete')
-                    _print_sampler_stats(sampler)
-                    print('  median',
-                          _format_number_list(log_post(median), *median))
+                    # Print a table of results.
+                    # Since results are sure to repeat,
+                    # group them and output a row for each group:
+                    #   number ll *hyperpars
+                    for nll, group in itertools.groupby(
+                            sorted(result, key=lambda r: r.fun),
+                            key=lambda r: round(r.fun, 2)
+                    ):
+                        for n, r in enumerate(group, start=1):
+                            pass
+                        print(' ', n, -nll, _format_number_list(*np.exp(r.x)))
 
-                # delete ref. to log_post()
-                sampler.lnprobfn = None
-
-                # return sampler and delete reference so memory will be cleared
-                # at next command
-                result = sampler
-                del sampler
+                # set hyperparameters to opt result with best likelihood
+                gp.kernel.vector = min(result, key=lambda r: r.fun).x
 
             else:
                 result = ValueError('Unknown command: {}.'.format(cmd))
@@ -222,34 +215,37 @@ class MultiGP(object):
         """
         self._procs[n].send_cmd('set_kernel_pars', pars).get_result()
 
-    def train(self, prior, nwalkers, nsteps, nburnsteps=None, verbose=False):
+    def train(self, prior, nstarts=10, verbose=False, **opt_kwargs):
         """
-        Train the GPs, i.e. estimate the optimal hyperparameters via MCMC.
+        Train the GPs, i.e. estimate the optimal hyperparameters via
+        maximum likelihood.
 
         prior: Prior object
-            Priors for the kernel hyperparameters.
-        nwalkers: number of MCMC walkers
-        nsteps, nburnsteps: number of MCMC steps per walker
-            nsteps must be specified, nburnsteps is optional.  If only
-            nburnsteps is not given, both the burn-in and production chains
-            will have nsteps; if nburnsteps is given, the burn-in chain will
-            have nburnsteps and the production chain will have nsteps.
+            Priors for the kernel hyperparameters.  Not used as a true
+            Bayesian prior, only to sample random starting positions for
+            nonlinear optimization.
+        nstarts : integer
+            Number of random starts for nonlinear optimization.
         verbose : boolean
             Whether to output status info.
+        opt_kwargs
+            Keyword args passed to scipy.optimize.minimize.  The optimizer runs
+            over the log of the hyperparameters, so options such as bounds or
+            constraints must take this into account.
 
         """
-        self._training_samplers = self._send_cmd_all_procs(
-            'train', prior, nwalkers, nsteps, nburnsteps, verbose
+        self._training_results = self._send_cmd_all_procs(
+            'train', prior, nstarts, verbose, **opt_kwargs
         )
 
     @property
-    def training_samplers(self):
+    def training_results(self):
         """
-        A tuple of the training samplers for each GP.
+        A tuple of the training results for each GP.
 
         """
         try:
-            return self._training_samplers
+            return self._training_results
         except AttributeError:
             raise RuntimeError('Training has not run yet.')
 
