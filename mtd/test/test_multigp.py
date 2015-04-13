@@ -168,3 +168,16 @@ def test_multigp():
 
     # wrong number of dimensions
     assert_raises(ValueError, mgp.predict, [[.5, .5, .5]])
+
+    # small sample size
+    nsamples, ndim, nfeatures = 5, 2, 7
+    x = np.random.rand(nsamples, ndim)
+    y = np.random.rand(nsamples, nfeatures)
+
+    mgp = MultiGP(x, y, kernel)
+
+    assert len(mgp) == nsamples, \
+        'MultiGP has incorrect length.'
+
+    assert mgp.predict([[.5, .5]]).shape == (1, nfeatures), \
+        'Incorrect number of predicted features.'

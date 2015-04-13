@@ -142,3 +142,22 @@ def test_pca():
     assert np.all(ycovdiag == yvar), \
         'Diagonal of covariance matrix does not agree with variance.\n' \
         '{} != {}'.format(ycovdiag, yvar)
+
+    # small sample size
+    nsamples, nfeatures = 3, 5
+    y = np.random.rand(nsamples, nfeatures)
+
+    pca = PCA(y)
+    assert pca.npc == nsamples, \
+        'Number of PC must equal number of samples for nsamples < nfeatures.'
+    assert pca.weights.size == nsamples, \
+        'Incorrect number of PC weights.'
+    assert pca.transform().shape == (nsamples, nsamples), \
+        'Incorrect transformed data shape.'
+    # the last component is negligible and numerically unstable
+    assert np.allclose(pca.transform()[:, :nsamples-1],
+                       pca.transform(y)[:, :nsamples-1]), \
+        'Inconsistent transformations.'
+
+    # npc > min(nsamples, nfeatures)
+    assert_raises(ValueError, PCA, y, npc=nfeatures)

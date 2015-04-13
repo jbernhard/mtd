@@ -21,7 +21,8 @@ class PCA(object):
     npc : optional, integer or float in (0, 1)
         If an integer, explicitly sets the number of PC.  If a float in (0, 1),
         it sets the minimum explained variance fraction; the number of PC is
-        automatically determined.  If not provided, all PC are used.
+        automatically determined.  If not provided, use maximum number of PC,
+        npc == min(nsamples, features).
 
     Principal components are "whitened" so that each has unit variance.  This
     simplifies prior specifications for GP training.
@@ -43,8 +44,14 @@ class PCA(object):
         self._sqrt_nsamples = np.sqrt(nsamples)
 
         # determine number of PC
-        if npc is None or npc > nfeatures:
-            self.npc = nfeatures
+        max_pc = min(nsamples, nfeatures)
+
+        if npc is None:
+            self.npc = max_pc
+        elif npc > max_pc:
+            raise ValueError(
+                'The maximum number of PC is min(nsamples, features).'
+                ' [{} for this dataset]'.format(max_pc))
         elif 0 < npc < 1:
             self.npc = np.count_nonzero(self.weights.cumsum() < npc) + 1
         else:
