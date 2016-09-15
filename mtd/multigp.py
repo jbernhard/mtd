@@ -439,6 +439,10 @@ def _print_sampler_stats(sampler):
     afrac = sampler.acceptance_fraction
     print('  acceptance fraction',
           _format_number_list(afrac.mean(), afrac.std(), sep=' ± '))
-    window = min(50, int(sampler.chain.shape[1]/2))
-    acor = sampler.get_autocorr_time(window)
-    print('  autocorrelation times', _format_number_list(*acor))
+    print('  autocorrelation times', end=' ')
+    try:
+        acor = sampler.get_autocorr_time()
+    except emcee.autocorr.AutocorrError:
+        print('[chain too short]')
+    else:
+        print(_format_number_list(*acor))

@@ -148,7 +148,7 @@ def test_multigp():
     assert_raises(RuntimeError, lambda: mgp.cal_sampler)
 
     # test calibration
-    nwalkers, nsteps = 8, 5
+    nwalkers, nsteps = 8, 10
     mgp.calibrate(yexp, yerr, nwalkers, nsteps, verbose=True)
     mgp.calibrate(yexp, yerr, nwalkers, nsteps, prior=prior, verbose=True)
 
